@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mpc-stem-exporter"
+version = "0.1.3"
+description = "A pad-first desktop recorder for MPC1000 JJOS3 stems"
+requires-python = ">=3.11"
+dependencies = [
+  "PySide6>=6.8,<7", "mido>=1.3,<2", "python-rtmidi>=1.5,<2",
+  "sounddevice>=0.5,<0.6", "soundfile>=0.13,<0.14", "numpy>=2,<3"
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[project.gui-scripts]
+mpc-stem-exporter = "mpc_stem_exporter.app:main"
+
+[tool.setuptools.packages.find]
+include = ["mpc_stem_exporter*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
