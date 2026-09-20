@@ -56,8 +56,17 @@ def test_mouse_double_click_names_without_toggling(tmp_path):
     w.close()
 
 
-def test_demo_export_ui_completes_and_can_browse_banks(tmp_path):
+def test_export_ui_completes_and_can_browse_banks(tmp_path, monkeypatch):
+    import mpc_stem_exporter.app as module
+    from mpc_stem_exporter.exporter import StemExporter
+    from mpc_stem_exporter.controller import DemoController
+    from mpc_stem_exporter.recorder import DemoRecorder
+    monkeypatch.setattr(module, 'StemExporter', lambda project, emit: StemExporter(
+        project, emit, DemoController(project.settings), DemoRecorder(project.settings)))
     app, w = window(tmp_path)
+    w.project.settings.midi_port = 'Test MIDI'
+    w.project.settings.audio_device = 'Test audio'
+    w.project.settings.setup_verified = True
     w.select_tracks(False, False)
     w.toggle_track(1)
     w.seq.setValue(0.1)
@@ -75,4 +84,30 @@ def test_demo_export_ui_completes_and_can_browse_banks(tmp_path):
     assert "1 stems saved" in w.status_label.text()
     assert w.bank == "D"
     assert w.progress.value() == 1000
+    w.close()
+
+
+def test_first_launch_is_empty_hardware_session(tmp_path):
+    app, w = window(tmp_path)
+    assert w.project.settings.mode == 'hardware'
+    assert not w.project.selected_tracks()
+    assert not w.export_button.isEnabled()
+    assert not w.progress.isVisible()
+    assert not w.meter_label.isVisible()
+    w.close()
+
+
+def test_legacy_sample_project_requires_hardware_setup(tmp_path):
+    from mpc_stem_exporter.model import demo_project
+    state = tmp_path / 'state.json'
+    project = demo_project()
+    project.settings.setup_verified = True
+    project.tracks[0].status = 'complete'
+    project.save(state)
+    app, w = window(tmp_path)
+    assert w.project.settings.mode == 'hardware'
+    assert not w.project.settings.setup_verified
+    assert w.project.tracks[0].name == 'Kick'
+    assert w.project.tracks[0].selected
+    assert w.project.tracks[0].status == 'idle'
     w.close()

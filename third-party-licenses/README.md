@@ -1,6 +1,6 @@
 # Bundled runtime notices
 
-This prototype uses unmodified third-party runtimes. Their notices are included
+This application uses unmodified third-party runtimes. Their notices are included
 in this directory. The Windows package keeps shared libraries in `_internal`.
 Application source is supplied separately as MPC-Stem-Exporter-Source.zip.
 

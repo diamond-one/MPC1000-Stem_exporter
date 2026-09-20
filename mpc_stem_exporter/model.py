@@ -35,7 +35,7 @@ class Track:
 
 @dataclass
 class Settings:
-    mode: str = "demo"
+    mode: str = "hardware"
     midi_port: str = ""
     midi_channel: int = 1
     audio_device: str = ""
@@ -73,7 +73,7 @@ class Settings:
         if self.input_left == self.input_right:
             raise ValueError("Choose two different audio inputs for stereo.")
         if (self.frames + 10 * self.sample_rate) * 8 > 4_000_000_000:
-            raise ValueError("This pass exceeds the prototype WAV size limit. Use a shorter sequence or lower sample rate.")
+            raise ValueError("This pass exceeds the WAV size limit. Use a shorter sequence or lower sample rate.")
         for key in ("midi_port", "audio_device", "audio_hostapi", "output_directory"):
             if not isinstance(getattr(self, key), str):
                 raise ValueError(f"Invalid {key}.")
@@ -163,7 +163,7 @@ def plan_filenames(tracks: list[Track], directory: Path) -> dict[int, Path]:
 
 
 def demo_project() -> Project:
-    project = Project("Midnight sketches")
+    project = Project("Midnight sketches", settings=Settings(mode="demo"))
     for n, name in {1: "Kick", 2: "Snare", 3: "Closed hat", 4: "Open hat", 5: "Percussion",
                     6: "Bass", 9: "Rhodes", 10: "Texture"}.items():
         project.tracks[n - 1].custom_name = name

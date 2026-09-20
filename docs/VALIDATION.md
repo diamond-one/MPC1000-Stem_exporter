@@ -92,3 +92,20 @@ existing MPC mute states do not exclude selected tracks. The guide gives
 deselection as an alternative to deleting MIDI data and recommends a backed-up
 working copy when deletion is needed. The updated guide was rendered and
 visually checked; recording and routing behavior is unchanged from 0.1.2.
+
+## Version 0.2.0 — recording-focused interface
+
+The suite passed **112 tests**. New sessions now start empty and use hardware
+recording. Restoring an older synthetic-audio project retains its names and
+selection, resets synthetic completion states, and requires hardware setup.
+The UI export test now explicitly injects simulated devices; synthetic capture
+is not selectable in the application.
+
+Removed the mode selector and banners, redundant selection count, repeated
+keyboard hints and the duplicate sample-rate control. Sample rate remains in
+Setup, while the main window displays the active WAV format. Input level and
+progress controls appear during capture. Both windows and the setup guide were
+rendered and visually reviewed, including pad label/status spacing.
+
+These interface changes do not establish sample-exact MPC alignment or replace
+the physical hardware acceptance procedure documented above.

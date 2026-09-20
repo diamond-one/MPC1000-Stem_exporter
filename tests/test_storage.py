@@ -111,6 +111,7 @@ class Controller:
 
 def project(tmp_path):
     p = Project()
+    p.settings.mode = "demo"
     p.settings.output_directory = str(tmp_path)
     p.settings.sequence_seconds = 0.1
     p.settings.tail_seconds = 0

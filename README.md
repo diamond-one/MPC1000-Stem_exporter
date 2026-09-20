@@ -1,6 +1,6 @@
 # MPC Stem Exporter
 
-A working Windows desktop prototype for selecting, naming and recording MPC1000
+A Windows desktop app for selecting, naming and recording MPC1000
 JJOS3 tracks through a 16-pad interface. Four banks share one persistent 64-track
 model. The MIDI controller, audio recorder, exporter and UI are separate modules.
 
@@ -13,7 +13,6 @@ model. The MIDI controller, audio recorder, exporter and UI are separate modules
 - Direct MIDI control for MPC1000 / JJOS3, with bank and transport routing tests.
 - Live left/right input meters with clipping indicators before export.
 - Project save/load, safe filenames, cancellation, and export progress manifests.
-- Hardware-free Demo mode for exploring the workflow.
 
 ## Screenshots
 
@@ -30,23 +29,11 @@ the meter is stopped and does not imply a verified physical audio connection.
 
 ## Current version
 
-Version **0.1.3** includes full-song preparation and previously muted track
-guidance in Setup. For a full song, convert it to a sequence on the MPC first
-(**MODE → SONG → F4**), then export that sequence. This app actively mutes/unmutes
-tracks: an existing MPC mute does not exclude a selected track from export.
-Deselect unwanted tracks in the app. If you need to delete their MIDI data,
-do so in a backed-up working copy of the sequence.
-
-Version **0.1.2** adds MIDI routing tests and a live stereo input meter in Setup.
-Drivers without usable capture timestamps now record with approximate timing
-instead of aborting. Each hardware pass reports the timing method in its manifest.
-
-Version **0.1.1** fixed exports stopping when Windows temporarily prevents the
-`export.json` progress file from being replaced. The app retries brief locks;
-if a lock persists, it continues recording and writes independent progress
-snapshots instead. Activity reports their location. The latest snapshot is the
-one with the highest `manifest_revision`. A progress-file lock never requires
-administrator rights or changes to Windows security settings.
+Version **0.2.0** focuses the interface on recording from the MPC. New sessions
+start empty, with no synthetic-audio mode or example tracks. Sample rate and
+routing live in Setup; the main window shows track selection, timing and export.
+Older sample projects retain their names and selections but require hardware
+setup before recording.
 
 ## Start
 
@@ -67,16 +54,15 @@ Prebuilt executables and recordings are not stored in Git.
 If you have the separately packaged portable Windows build, extract **MPC-Stem-Exporter-Windows.zip** in full
 and open **MPC Stem Exporter.exe**. Keep `_internal` beside the executable. It
 requires no separate Python installation. This is a locally built, unsigned
-prototype; no installer, administrator access or background service is used.
+app; no installer, administrator access or background service is used.
 
-The first launch opens **Demo mode** with eight example tracks. Click pads to
-select them; double-click or press F2 to rename. Export creates actual stereo
-24-bit WAV files using synthetic tones, in a clearly labeled `DEMO_…` folder.
-Demo uses no MIDI output and does not record your microphone or interface.
+On first launch, choose **MPC & audio setup** to select and test your MIDI and
+audio connections. Select tracks by clicking pads; double-click or press F2 to
+rename. Export records stereo 24-bit WAV files from your selected audio input.
 
 ## Use with the MPC
 
-Open **MPC & audio setup**, choose Hardware, select MIDI output, audio input,
+Open **MPC & audio setup**, select MIDI output, audio input,
 physical left/right channels and matching MIDI receive channel. Follow the setup
 instructions there. The required mappings, official setup-file link and exact
 track isolation sequence are in [the research and specification](docs/RESEARCH-AND-SPEC.md).
@@ -89,7 +75,7 @@ closed while exporting.
 
 ### Test routing before exporting
 
-In **MPC & audio setup → Connections & tests**, choose **Hardware**:
+In **MPC & audio setup → Connections & tests**:
 
 - **Test MIDI · bank LEDs** sends MAIN and cycles A → B → C → D → A. Watch the
   MPC screen and bank LEDs. A successful send confirms the computer sent MIDI;
@@ -113,7 +99,7 @@ audio. MIDI and audio can be tested separately, or run the meter during Play tes
 1. Select pads across any bank. Selections stay in place.
 2. Name tracks if desired. Blank names use their global track number, such as
    `Track_36.wav` for Bank C pad 4.
-3. Enter sequence duration and end tail, select sample rate and output folder.
+3. Enter sequence duration and end tail, choose an output folder. Set the sample rate in Setup.
 4. Press **EXPORT N STEMS**. The app records one selected track at a time, in
    global order. Bank browsing remains available while editing is locked.
 5. Use **Open exported stems** when finished. Every run gets its own folder with
@@ -149,7 +135,7 @@ Interrupted queued/recording statuses reset on reopen; completed statuses remain
 | Name a track | Double-click, F2, or use the name field below the grid |
 | Confirm/cancel a name | Enter / Escape |
 | Navigate pads | Arrow keys; Tab to move between other controls |
-| Select/Clear all 64 | Select all / Clear |
+| Select/Clear all 64 | Select all / Clear all |
 | Select/Clear visible 16 | Select bank / Clear bank |
 | Save/Open project | Ctrl+S / Ctrl+O |
 
@@ -160,7 +146,7 @@ before export. The Windows audio APIs available depend on your driver;
 device and host-API selection are explicit and saved by name. Missing or stagnant
 timestamps use approximate sample-clock timing, logged in Activity and the manifest.
 An audio overflow or device disconnection still stops the pass.
-Very long passes that exceed the prototype's 4 GB WAV capture limit are rejected.
+Very long passes that exceed the 4 GB WAV capture limit are rejected.
 
 ## Validation and scope
 
@@ -172,12 +158,12 @@ Run the automated checks with:
 ```
 
 Tests cover all 64 MIDI mappings, state persistence, filenames, cancellation,
-failures, WAV properties and native Qt interactions. A successful demo export
+failures, WAV properties and native Qt interactions. A successful simulated test
 does not establish hardware compatibility or accurate timing. **No physical
 MPC1000 was tested during this build.** The hardware acceptance procedure is
 included in the specification.
 
-Prototype limits: no MPC state readback, no automatic duration/tempo discovery,
+Current limits: no MPC state readback, no automatic duration/tempo discovery,
 no previous mute-mask restoration, no reference-signal alignment, and no
 multi-sequence automation. JJ Controller, Bome and a DAW are not dependencies.
 

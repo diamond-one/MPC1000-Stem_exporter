@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog, QDia
 
 from .exporter import StemExporter
 from . import __version__
-from .model import BANKS, PAD_ORDER, Project, Track, demo_project, plan_filenames, safe_stem
+from .model import BANKS, PAD_ORDER, Project, Track, plan_filenames, safe_stem
 from .setup_dialog import SetupDialog
 
 ROOT = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
@@ -107,7 +107,7 @@ class Pad(QPushButton):
         self.timer = QTimer(self)
         self.timer.setSingleShot(True)
         self.timer.timeout.connect(lambda: self.toggle_track.emit(self.pending_number))
-        self.setMinimumSize(112, 88)
+        self.setMinimumSize(112, 100)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -227,7 +227,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.state_path = state_path or ROOT / "user-data" / "last-project.json"
         self.project_path = None
-        self.project = demo_project()
+        self.project = Project()
         self.load_warning = ""
         if self.state_path.exists():
             try:
@@ -244,8 +244,8 @@ class MainWindow(QMainWindow):
         self.busy = False
         self.last_directory = None
         self.setWindowTitle(f"MPC Stem Exporter {__version__}")
-        self.resize(1130, 930)
-        self.setMinimumSize(1000, 850)
+        self.resize(1130, 900)
+        self.setMinimumSize(1000, 880)
         central = QWidget()
         self.setCentralWidget(central)
         layout = QVBoxLayout(central)
@@ -256,7 +256,7 @@ class MainWindow(QMainWindow):
         branding = QVBoxLayout()
         branding.setSpacing(2)
         branding.addWidget(label("MPC  /  STEM EXPORTER", "title"))
-        branding.addWidget(label("64 tracks. Four banks. One sequence at a time.", "muted"))
+        branding.addWidget(label("MPC1000 · JJOS3", "muted"))
         header.addLayout(branding)
         header.addStretch()
         self.new_button = button("New", self.new_project, "quiet")
@@ -271,11 +271,9 @@ class MainWindow(QMainWindow):
         connection.setObjectName("card")
         row = QHBoxLayout(connection)
         row.setContentsMargins(16, 11, 12, 11)
-        self.mode_badge = label("DEMO MODE", "badge")
-        row.addWidget(self.mode_badge)
         self.connection_label = label("", "muted")
         row.addWidget(self.connection_label, 1)
-        self.setup_button = button("MPC && audio setup  ↗", self.setup)
+        self.setup_button = button("MPC && audio setup", self.setup)
         row.addWidget(self.setup_button)
         layout.addWidget(connection)
 
@@ -313,14 +311,12 @@ class MainWindow(QMainWindow):
         pads_column.addLayout(grid, 1)
         actions = QHBoxLayout()
         self.selection_buttons = []
-        for text, enabled, bank_only in (("Select all", True, False), ("Clear", False, False),
+        for text, enabled, bank_only in (("Select all", True, False), ("Clear all", False, False),
                                           ("Select bank", True, True), ("Clear bank", False, True)):
             b = button(text, lambda checked=False, on=enabled, local=bank_only: self.select_tracks(on, local), "quiet")
             self.selection_buttons.append(b)
             actions.addWidget(b)
         actions.addStretch()
-        self.count_label = label("", "muted")
-        actions.addWidget(self.count_label)
         pads_column.addLayout(actions)
 
         editor = QFrame()
@@ -338,6 +334,7 @@ class MainWindow(QMainWindow):
         self.name_edit = NameEdit()
         self.name_edit.setPlaceholderText("Name this track…")
         self.name_edit.setAccessibleName("Track name")
+        self.name_edit.setToolTip("Enter to confirm · Esc to cancel · F2 to rename a focused pad")
         self.name_edit.returnPressed.connect(self.commit_name)
         self.name_edit.cancelled.connect(self.cancel_name)
         self.name_edit.editingFinished.connect(self.commit_name)
@@ -345,7 +342,6 @@ class MainWindow(QMainWindow):
         self.filename_label = label("", "muted")
         el.addWidget(self.filename_label)
         pads_column.addWidget(editor)
-        pads_column.addWidget(label("Click to select  ·  Double-click to name  ·  Arrow keys to move", "muted"))
         body.addLayout(pads_column, 7)
 
         sidebar = QFrame()
@@ -372,12 +368,8 @@ class MainWindow(QMainWindow):
         self.tail.setDecimals(2)
         self.tail.setSuffix(" s")
         self.tail.setAccessibleName("Tail duration")
-        self.rate = QComboBox()
-        for rate in (44100, 48000, 88200, 96000):
-            self.rate.addItem(f"{rate / 1000:g} kHz", rate)
         timings.addRow("Sequence length", self.seq)
         timings.addRow("End tail", self.tail)
-        timings.addRow("Sample rate", self.rate)
         side.addLayout(timings)
         self.format_label = label("", "muted")
         self.format_label.setWordWrap(True)
@@ -409,16 +401,13 @@ class MainWindow(QMainWindow):
         self.open_output = button("Open exported stems  ↗", self.open_recordings, "quiet")
         self.open_output.hide()
         side.addWidget(self.open_output)
-        self.mode_note = label("", "muted")
-        self.mode_note.setWordWrap(True)
-        side.addWidget(self.mode_note)
         body.addWidget(sidebar, 3)
         layout.addLayout(body, 1)
 
         footer = QVBoxLayout()
         footer.setSpacing(7)
         statusrow = QHBoxLayout()
-        self.status_label = label("Ready when you are.")
+        self.status_label = label("Select tracks to export.")
         self.status_label.setWordWrap(True)
         statusrow.addWidget(self.status_label, 1)
         self.meter_label = label("INPUT  —", "eyebrow")
@@ -429,6 +418,7 @@ class MainWindow(QMainWindow):
         self.progress = QProgressBar()
         self.progress.setRange(0, 1000)
         self.progress.setValue(0)
+        self.progress.hide()
         self.progress.setTextVisible(False)
         footer.addWidget(self.progress)
         self.activity = QPlainTextEdit()
@@ -442,7 +432,6 @@ class MainWindow(QMainWindow):
         self.load_settings()
         for control in (self.seq, self.tail):
             control.valueChanged.connect(self.update_settings)
-        self.rate.currentIndexChanged.connect(self.update_settings)
         QShortcut(QKeySequence.StandardKey.Save, self, activated=self.save_project)
         QShortcut(QKeySequence.StandardKey.Open, self, activated=self.open_project)
         self.animation = QTimer(self)
@@ -459,13 +448,16 @@ class MainWindow(QMainWindow):
 
     def load_settings(self):
         s = self.project.settings
+        # Older sample projects cannot silently produce synthetic stems in the UI.
+        if s.mode != "hardware":
+            s.mode = "hardware"
+            s.setup_verified = False
+            for track in self.project.tracks:
+                track.status = "idle"
         for control, value in ((self.seq, s.sequence_seconds), (self.tail, s.tail_seconds)):
             control.blockSignals(True)
             control.setValue(value)
             control.blockSignals(False)
-        self.rate.blockSignals(True)
-        self.rate.setCurrentIndex(self.rate.findData(s.sample_rate))
-        self.rate.blockSignals(False)
         self.folder_edit.setText(s.output_directory)
         self.title_edit.setText(self.project.title)
 
@@ -473,8 +465,8 @@ class MainWindow(QMainWindow):
         if self.busy:
             return
         s = self.project.settings
+        s.mode = "hardware"
         s.sequence_seconds, s.tail_seconds = self.seq.value(), self.tail.value()
-        s.sample_rate = self.rate.currentData()
         s.output_directory = self.folder_edit.text().strip()
         self.folder_edit.setToolTip(s.output_directory)
         self.project.title = self.title_edit.text().strip() or "Untitled session"
@@ -500,25 +492,22 @@ class MainWindow(QMainWindow):
         for pad, track in zip(self.pads, self.project.bank_tracks(self.bank)):
             pad.set_track(track)
             pad.editable = not self.busy
-        self.count_label.setText(f"{n} selected")
         self.export_button.setText(f"EXPORT {n} {'STEM' if n == 1 else 'STEMS'}" if n else "EXPORT STEMS")
         self.export_button.setEnabled(bool(n) and not self.busy)
         for control in [self.new_button, self.open_button, self.save_button, self.setup_button,
-                        self.name_edit, self.include, self.seq, self.tail, self.rate,
+                        self.name_edit, self.include, self.seq, self.tail,
                         self.title_edit, self.folder_edit, self.browse_button, *self.selection_buttons]:
             control.setEnabled(not self.busy)
         self.cancel_button.setVisible(self.busy)
+        self.progress.setVisible(self.busy)
+        self.meter_label.setVisible(self.busy)
         s = self.project.settings
-        demo = s.mode == "demo"
-        self.mode_badge.setText("DEMO MODE" if demo else "JJOS3 / HARDWARE")
-        self.connection_label.setText("Synthetic audio · Explore the complete export workflow" if demo else
-            f"MIDI  {s.midi_port or 'Not selected'}   /   AUDIO  {s.audio_device or 'Not selected'}")
+        self.connection_label.setText(
+            f"MIDI  {s.midi_port or 'Choose output'}   /   AUDIO  {s.audio_device or 'Choose input'}")
         self.connection_label.setToolTip(self.connection_label.text())
-        self.format_label.setText(f"24-bit stereo WAV · {s.preroll_seconds:g} s shared pre-roll")
+        self.format_label.setText(f"{s.sample_rate / 1000:g} kHz · 24-bit stereo WAV")
         seconds = s.frames / s.sample_rate
         self.estimate.setText(f"{n:02} stems  ·  {duration(seconds)} each  ·  ~{duration(n * (seconds + s.settle_seconds + 1))} total")
-        self.mode_note.setText("Demo creates labeled synthetic WAVs at 6× speed. Connect your MPC in Setup when ready." if demo else
-                              "Preserves leading silence. MIDI start timing needs verification on your MPC.")
         self.queue_list.clear()
         files = plan_filenames(selected, Path(".__unused_filename_preview__"))
         for t in selected:
@@ -548,7 +537,7 @@ class MainWindow(QMainWindow):
         self.include.blockSignals(True)
         self.include.setChecked(track.selected)
         self.include.blockSignals(False)
-        self.filename_label.setText(f"Saves as {safe_stem(track.name, number)}.wav  ·  Enter to confirm / Esc to cancel")
+        self.filename_label.setText(f"Saves as {safe_stem(track.name, number)}.wav")
 
     def toggle_track(self, number):
         if self.busy:
@@ -585,7 +574,7 @@ class MainWindow(QMainWindow):
             track.status = "idle"
             self.persist()
             self.refresh()
-        self.filename_label.setText(f"Saves as {safe_stem(track.name, track.number)}.wav  ·  Enter to confirm / Esc to cancel")
+        self.filename_label.setText(f"Saves as {safe_stem(track.name, track.number)}.wav")
 
     def cancel_name(self):
         self.name_edit.setText(self.project.tracks[self.focused - 1].custom_name)
@@ -679,7 +668,7 @@ class MainWindow(QMainWindow):
         self.update_settings()
         s = self.project.settings
         if s.mode == "hardware" and (not s.setup_verified or not s.midi_port or not s.audio_device):
-            self.status_label.setText("Complete the MPC & audio setup before a hardware export.")
+            self.status_label.setText("Choose your MIDI and audio connections and check the MPC setup before exporting.")
             self.setup()
             return
         if not self.project.selected_tracks():
@@ -712,14 +701,14 @@ class MainWindow(QMainWindow):
             self.refresh()
         elif kind == "progress":
             track = self.project.tracks[event["number"] - 1]
-            self.status_label.setText(f"{'Demo · ' if self.project.settings.mode == 'demo' else ''}Recording {track.name}  /  {event['pass']} of {event['total']}  /  {event['ratio']:.0%}")
+            self.status_label.setText(f"Recording {track.name}  /  {event['pass']} of {event['total']}  /  {event['ratio']:.0%}")
             self.progress.setValue(round(event["overall"] * 1000))
             db = 20 * math.log10(max(event["peak"], 1e-6))
-            self.meter_label.setText(f"{'DEMO' if self.project.settings.mode == 'demo' else 'INPUT'}  {db:.1f} dBFS")
+            self.meter_label.setText(f"INPUT  {db:.1f} dBFS")
         elif kind == "finished":
             self.last_directory = event["directory"]
             if event["status"] == "complete":
-                self.status_label.setText(f"{'Demo complete' if self.project.settings.mode == 'demo' else 'Export complete'} · {event['complete']} stems saved.")
+                self.status_label.setText(f"Export complete · {event['complete']} stems saved.")
                 self.progress.setValue(1000)
             elif event["status"] == "cancelled":
                 self.status_label.setText(f"Stopped. {event['complete']} completed stems kept; unfinished pass discarded.")

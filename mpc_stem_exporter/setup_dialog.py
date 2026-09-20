@@ -82,34 +82,31 @@ class SetupDialog(QDialog):
     def __init__(self, settings, parent=None):
         super().__init__(parent)
         self.settings = copy.deepcopy(settings)
+        self.settings.mode = "hardware"
         self.monitor = None
         self.midi_worker = None
         self.pending_result = None
         self.levels = [0.0, 0.0]
         self.last_signal = [0.0, 0.0]
-        self.setWindowTitle("MPC & audio setup — routing tests")
+        self.setWindowTitle("MPC & audio setup")
         self.setMinimumWidth(710)
-        self.resize(760, 825)
+        self.resize(760, 770)
         layout = QVBoxLayout(self)
         layout.setSpacing(12)
         title = text_label("MPC & AUDIO SETUP", "title")
-        layout.addWidget(title)
+        heading = QHBoxLayout()
+        heading.addWidget(title)
+        heading.addStretch()
+        layout.addLayout(heading)
         self.tabs = QTabWidget()
         layout.addWidget(self.tabs, 1)
         connections = QWidget()
         self.tabs.addTab(connections, "Connections && tests")
         connect_layout = QVBoxLayout(connections)
         connect_layout.setSpacing(12)
-        source_row = QHBoxLayout()
-        source_row.addWidget(text_label("Source"))
-        self.mode = QComboBox()
-        self.mode.addItems(["Demo — synthetic audio, no hardware", "Hardware — MPC1000 / JJOS3"])
-        self.mode.setCurrentIndex(0 if settings.mode == "demo" else 1)
-        source_row.addWidget(self.mode, 1)
         self.refresh_button = QPushButton("Refresh devices")
         self.refresh_button.clicked.connect(self.refresh_devices)
-        source_row.addWidget(self.refresh_button)
-        connect_layout.addLayout(source_row)
+        heading.addWidget(self.refresh_button)
 
         midi_box = QGroupBox("1  ·  MIDI to the MPC")
         ml = QVBoxLayout(midi_box)
@@ -253,7 +250,6 @@ class SetupDialog(QDialog):
         self.meter_timer.setInterval(50)
         self.meter_timer.timeout.connect(self.poll_monitor)
         self.refresh_devices()
-        self.mode.currentIndexChanged.connect(self.mode_changed)
         for control in (self.audio, self.rate):
             control.currentIndexChanged.connect(self.audio_changed)
         for control in (self.left, self.right):
@@ -294,7 +290,7 @@ class SetupDialog(QDialog):
 
     def current_settings(self, validate=True):
         s = copy.deepcopy(self.settings)
-        s.mode = "demo" if self.mode.currentIndex() == 0 else "hardware"
+        s.mode = "hardware"
         s.midi_port = self.midi.currentData() or ""
         d = self.audio.currentData() or {}
         s.audio_device, s.audio_hostapi = d.get("name", ""), d.get("hostapi", "")
@@ -308,20 +304,14 @@ class SetupDialog(QDialog):
         return s
 
     def update_enabled(self):
-        hardware = self.mode.currentIndex() == 1
         testing = self.midi_worker is not None
         for widget in (self.midi, self.channel, self.bank_test, self.play_test, self.gap):
-            widget.setEnabled(hardware and not testing)
+            widget.setEnabled(not testing)
         for widget in (self.audio, self.rate, self.left, self.right, self.verified, self.settle, self.meter_button):
-            widget.setEnabled(hardware)
-        self.stop_test.setEnabled(hardware)
+            widget.setEnabled(True)
+        self.stop_test.setEnabled(True)
         self.refresh_button.setEnabled(not testing)
-        self.mode.setEnabled(not testing)
         self.reset_button.setEnabled(self.monitor is not None)
-
-    def mode_changed(self):
-        self.stop_monitor()
-        self.update_enabled()
 
     def audio_changed(self):
         if self.monitor:
@@ -336,7 +326,7 @@ class SetupDialog(QDialog):
         try:
             s = self.current_settings(validate=False)
             if s.mode != "hardware" or not s.midi_port:
-                raise ValueError("Choose Hardware mode and a MIDI output first.")
+                raise ValueError("Choose a MIDI output first.")
         except ValueError as exc:
             self.midi_status.setText(str(exc))
             return
