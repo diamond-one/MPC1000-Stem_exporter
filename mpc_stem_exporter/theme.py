@@ -1,6 +1,9 @@
-"""Bauhaus visual system for the native recorder; no hardware side effects."""
+"""Application visual system for the native recorder; no hardware side effects."""
 from pathlib import Path
-from PySide6.QtGui import QFontDatabase
+from PySide6.QtGui import QFontDatabase, QIcon, QPalette, QColor
+from PySide6.QtWidgets import QApplication
+import re
+import sys
 
 PAPER = '#ECE9DC'
 SURFACE = '#F5F1E5'
@@ -81,3 +84,78 @@ QTabBar::tab:focus { border-bottom: 3px solid #d0a72d; }
 QDialogButtonBox QPushButton { min-width: 88px; }
 """
 STYLE += '\nQCheckBox::indicator:checked { image: url("' + (Path(__file__).parent / 'assets/icons/check.svg').as_posix() + '"); }'
+
+
+ICON_PATH = Path(__file__).parent / 'assets/icons/app.ico'
+
+
+def app_icon():
+    return QIcon(str(ICON_PATH))
+
+
+def is_dark():
+    app = QApplication.instance()
+    return bool(app and app.property('darkMode'))
+
+
+def pad_palette(dark=None):
+    if dark is None:
+        dark = is_dark()
+    return ({'pad': '#30343B', 'ink': '#F1EEE5', 'muted': '#BCC2CC',
+             'saved': '#253D5D', 'saved_ink': '#DDE7FF', 'focus': '#A5C0FF',
+             'error': '#542D2D', 'error_ink': '#FFDAD6'} if dark else
+            {'pad': '#DCD8C9', 'ink': INK, 'muted': MUTED,
+             'saved': '#DCE4F3', 'saved_ink': '#193A77', 'focus': BLUE,
+             'error': '#F0D9D3', 'error_ink': '#8D2927'})
+
+
+_DARK_COLOURS = {
+    '#ece9dc': '#1c1e23', '#f5f1e5': '#25282f', '#1e2731': '#f1eee5',
+    '#565f60': '#bcc2cc', '#fffdf4': '#20232a', '#969d99': '#727b89',
+    '#deded0': '#3b414c', '#7b817c': '#939ba7', '#deded2': '#30343c',
+    '#c6c9bd': '#505865', '#d5d8d2': '#30343c', '#737c79': '#9ba3b0',
+    '#e5e4d8': '#30343c', '#c2c6b9': '#5e6979', '#dce4f3': '#253d5d',
+    '#193a77': '#dde7ff', '#d9ddcf': '#39414c', '#747f7d': '#8c96a4',
+    '#87938a': '#8391a6', '#b7beb0': '#5e6979', '#e1dfd2': '#30343c',
+    '#a02b29': '#ffaaa2', '#f0d9d3': '#542d2d',
+}
+DARK_STYLE = re.sub(r'#[0-9a-fA-F]{6}', lambda m: _DARK_COLOURS.get(m[0].lower(), m[0]), STYLE)
+DARK_STYLE += """
+QLabel#readiness { color: #a5c0ff; }
+QPushButton:focus, QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus { border: 2px solid #a5c0ff; }
+QPushButton#quiet:focus { border-color: #a5c0ff; }
+QPushButton#bank:checked { color: #1e2731; }
+QToolTip { background: #30343b; color: #f1eee5; border-color: #8391a6; }
+"""
+
+
+def apply_theme(dark):
+    app = QApplication.instance()
+    app.setProperty('darkMode', bool(dark))
+    palette = app.style().standardPalette()
+    if dark:
+        for role, colour in ((QPalette.ColorRole.Window,'#1c1e23'),
+                (QPalette.ColorRole.WindowText,'#f1eee5'), (QPalette.ColorRole.Base,'#20232a'),
+                (QPalette.ColorRole.AlternateBase,'#30343b'), (QPalette.ColorRole.Text,'#f1eee5'),
+                (QPalette.ColorRole.Button,'#25282f'), (QPalette.ColorRole.ButtonText,'#f1eee5'),
+                (QPalette.ColorRole.Highlight,BLUE), (QPalette.ColorRole.HighlightedText,'#fff8e7'),
+                (QPalette.ColorRole.Link,'#a5c0ff'), (QPalette.ColorRole.LinkVisited,'#d1b6ec')):
+            palette.setColor(role,QColor(colour))
+    app.setPalette(palette)
+    app.setStyleSheet(DARK_STYLE if dark else STYLE)
+    for window in app.topLevelWidgets():
+        sync_titlebar(window)
+        window.update()
+
+
+def sync_titlebar(widget):
+    if sys.platform != 'win32' or not widget.isVisible():
+        return
+    try:
+        import ctypes
+        from ctypes import wintypes
+        value = ctypes.c_int(int(is_dark()))
+        ctypes.windll.dwmapi.DwmSetWindowAttribute(
+            wintypes.HWND(int(widget.winId())), 20, ctypes.byref(value), ctypes.sizeof(value))
+    except (OSError, AttributeError):
+        pass

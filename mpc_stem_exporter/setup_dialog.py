@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox,
 
 from .controller import Cancelled, MPCController, pause
 from .recorder import InputMonitor, audio_devices
+from .theme import is_dark, sync_titlebar
 
 
 def text_label(text, role=None):
@@ -170,7 +171,7 @@ class SetupDialog(QDialog):
             meter.setRange(0, 600)
             meter.setValue(0)
             meter.setTextVisible(False)
-            meter.setStyleSheet("QProgressBar { min-height: 16px; max-height: 16px; } QProgressBar::chunk { background: #244ba4; }")
+            meter.setStyleSheet("QProgressBar { min-height: 16px; max-height: 16px; }")
             row.addWidget(meter, 1)
             value = text_label("−∞ dBFS")
             value.setMinimumWidth(104)
@@ -243,7 +244,7 @@ class SetupDialog(QDialog):
         alignment remains approximate. The capture mode is logged and saved in the manifest.</p>
         <p>The meter stops when you change the audio route or close Setup, releasing the input
         for export. Previous MPC mute states cannot be read or restored.</p>
-        <p><a style='color:#244ba4' href='https://www7a.biglobe.ne.jp/~mpc1000/mpc-ctl/index.htm'>Official JJ setup & mappings</a></p>""")
+        <p><a href='https://www7a.biglobe.ne.jp/~mpc1000/mpc-ctl/index.htm'>Official JJ setup & mappings</a></p>""")
         adv.addWidget(guide, 1)
         self.verified = QCheckBox("I checked the MPC setup, routing, and sequence behavior.")
         self.verified.setChecked(settings.setup_verified)
@@ -263,6 +264,10 @@ class SetupDialog(QDialog):
         for control in (self.left, self.right):
             control.valueChanged.connect(self.audio_changed)
         self.update_enabled()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        sync_titlebar(self)
 
     def refresh_devices(self):
         self.stop_monitor()
@@ -398,7 +403,7 @@ class SetupDialog(QDialog):
             if peak >= 0.001:
                 self.last_signal[i] = now
             self.level_labels[i].setText("CLIP" if data['clipped'][i] else (f"{db:.1f} dBFS" if db > -90 else "−∞ dBFS"))
-            self.level_labels[i].setStyleSheet("color: #b63230; font-weight: bold;" if data['clipped'][i] else "")
+            self.level_labels[i].setStyleSheet(('color: #ffaaa2; font-weight: bold;' if is_dark() else 'color: #b63230; font-weight: bold;') if data['clipped'][i] else '')
         sides = [side for i, side in enumerate(('L', 'R')) if now - self.last_signal[i] < 0.8]
         if any(data['clipped']):
             self.audio_status.setText("Input clipped. Lower the audio-interface gain, then reset the clip indicators.")

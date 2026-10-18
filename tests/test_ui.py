@@ -42,6 +42,59 @@ def test_native_grid_bank_persistence_rename_and_keyboard(tmp_path):
     w.close()
 
 
+def test_theme_is_remembered_without_changing_recording_or_track_state(tmp_path):
+    import copy
+    import json
+    app, w = window(tmp_path)
+    w.toggle_track(1)
+    w.switch_bank('D')
+    w.toggle_track(49)
+    before = copy.deepcopy(w.project.to_dict())
+    w.busy = True
+    w.refresh()
+    w.toggle_theme()
+    app.processEvents()
+    assert w.dark_mode and w.busy
+    assert w.project.to_dict() == before
+    assert w.bank == 'D'
+    assert w.cancel_button.isVisible() and not w.export_button.isEnabled()
+    assert w.theme_button.isEnabled()
+    assert json.loads(w.ui_path.read_text()) == {'theme': 'dark'}
+    w.busy = False
+    w.close()
+    app, restored = window(tmp_path)
+    assert restored.dark_mode
+    assert restored.theme_button.text() == 'Theme: Dark'
+    restored.toggle_theme()
+    assert not restored.dark_mode
+    restored.close()
+
+
+def test_icon_has_small_and_large_windows_sizes_and_bad_theme_file_is_safe(tmp_path):
+    from mpc_stem_exporter.theme import app_icon
+    (tmp_path / 'ui-preferences.json').write_text('invalid JSON')
+    app, w = window(tmp_path)
+    assert not w.dark_mode
+    assert not w.windowIcon().isNull()
+    assert {16, 32, 256}.issubset({s.width() for s in app_icon().availableSizes()})
+    w.close()
+
+
+def test_both_pad_palettes_have_readable_text():
+    from mpc_stem_exporter.theme import pad_palette
+    def luminance(colour):
+        rgb = [int(colour[i:i+2], 16) / 255 for i in (1,3,5)]
+        rgb = [v/12.92 if v <= .04045 else ((v+.055)/1.055)**2.4 for v in rgb]
+        return sum(a*b for a,b in zip(rgb, (.2126,.7152,.0722)))
+    for dark in (False, True):
+        p = pad_palette(dark)
+        for fg,bg in ((p['ink'],p['pad']), (p['muted'],p['pad']),
+                      (p['saved_ink'],p['saved']), (p['error_ink'],p['error']),
+                      ('#FFF8E7','#B63230'), ('#FFF8E7','#244BA4')):
+            a,b = sorted((luminance(fg),luminance(bg)))
+            assert (b+.05)/(a+.05) >= 4.5
+
+
 def test_mouse_double_click_names_without_toggling(tmp_path):
     app, w = window(tmp_path)
     w.select_tracks(False, False)

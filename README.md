@@ -8,6 +8,8 @@ model. The MIDI controller, audio recorder, exporter and UI are separate modules
 
 ![The MPC-style pad interface with bank selection, track names and stem queue](docs/screenshots/pad-interface.png)
 
+[View dark mode](docs/screenshots/dark-mode.png)
+
 ## Features
 
 - Four banks of 16 pads with persistent selection and names across all 64 tracks.
@@ -30,7 +32,11 @@ Screenshots show an illustrative six-track session in the actual Windows app. Co
 
 ## Current version
 
-Version **0.3.0** introduces the Bauhaus interface: flat colour-coded pads,
+Version **0.3.1** adds a remembered **Theme: Light / Dark** button and a Windows
+app icon for the title bar, taskbar and executable. Switch themes from the top
+bar without changing track selections, editing names or interrupting recording.
+
+The standard interface uses flat colour-coded pads,
 clear MIDI/audio directions, an interactive stem queue and recording actions
 that stay visible while settings scroll. Click a queue row to jump to its bank
 and track. The main action shows whether to select tracks, set up recording or
@@ -56,7 +62,7 @@ python -m venv .venv
 To create a standalone executable, follow [Build the portable Windows app](#build-the-portable-windows-app).
 Prebuilt Windows downloads are available under [Releases](https://github.com/diamond-one/MPC1000-Stem_exporter/releases). Executables and recordings are not stored in the source tree.
 
-If you have the separately packaged portable Windows build, extract **MPC-Stem-Exporter-0.3.0-Windows.zip** in full
+If you have the separately packaged portable Windows build, extract **MPC-Stem-Exporter-0.3.1-Windows.zip** in full
 and open **MPC Stem Exporter.exe**. Keep `_internal` beside the executable. It
 requires no separate Python installation. This is a locally built, unsigned
 app; no installer, administrator access or background service is used.

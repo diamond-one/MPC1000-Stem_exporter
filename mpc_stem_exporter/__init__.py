@@ -1,3 +1,3 @@
 """MPC Stem Exporter. Hardware-independent model, controller, recorder and UI."""
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"

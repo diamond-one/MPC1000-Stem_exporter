@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import json
 import math
 import sys
 import time
@@ -20,7 +21,7 @@ from .model import BANKS, PAD_ORDER, Project, Track, plan_filenames, safe_stem
 from .setup_dialog import SetupDialog
 
 ROOT = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
-from .theme import STYLE, BLUE, RED, YELLOW, PAPER, SURFACE, INK, MUTED, load_fonts
+from .theme import STYLE, BLUE, RED, YELLOW, PAPER, SURFACE, INK, MUTED, load_fonts, app_icon, apply_theme, is_dark, pad_palette, sync_titlebar
 
 ACCENT = BLUE
 
@@ -128,26 +129,27 @@ class Pad(QPushButton):
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = QRectF(self.rect()).adjusted(2, 2, -2, -2)
         t = self.track
-        background, foreground, edge = '#DCD8C9', INK, '#DCD8C9'
-        state, marker = ('Selected', RED) if t.selected else ('Not selected', MUTED)
+        palette = pad_palette()
+        background, foreground, edge = palette['pad'], palette['ink'], palette['pad']
+        state, marker = ('Selected', RED) if t.selected else ('Not selected', palette['muted'])
         if t.selected:
             background, foreground, edge = RED, '#FFF8E7', RED
         if t.status == 'complete':
-            background, foreground, edge = '#DCE4F3', '#193A77', BLUE
-            state, marker = 'Saved', BLUE
+            background, foreground, edge = palette['saved'], palette['saved_ink'], palette['focus']
+            state, marker = 'Saved', palette['saved_ink']
         elif t.status == 'error':
-            background, foreground, edge = '#F0D9D3', '#8D2927', RED
-            state, marker = 'Error', RED
+            background, foreground, edge = palette['error'], palette['error_ink'], RED
+            state, marker = 'Error', palette['error_ink']
         elif t.status == 'recording':
             background, foreground, edge = RED, '#FFF8E7', RED
             state, marker = 'Recording', '#FFF8E7'
         elif t.status == 'queued':
-            state, marker = 'Waiting', '#FFF8E7' if t.selected else BLUE
+            state, marker = 'Waiting', '#FFF8E7' if t.selected else palette['focus']
         p.setBrush(QColor(background))
         p.setPen(QPen(QColor(edge), 1))
         p.drawRect(r)
         if self.hasFocus():
-            p.setPen(QPen(QColor('#FFF8E7' if background == RED else BLUE), 2))
+            p.setPen(QPen(QColor('#FFF8E7' if background == RED else palette['focus']), 2))
             p.setBrush(Qt.BrushStyle.NoBrush)
             p.drawRect(r.adjusted(4, 4, -4, -4))
         p.setPen(QColor(foreground))
@@ -164,7 +166,7 @@ class Pad(QPushButton):
         p.end()
 
 
-class BauhausMark(QWidget):
+class AppMark(QWidget):
     def __init__(self):
         super().__init__()
         self.setFixedSize(48, 43)
@@ -203,6 +205,14 @@ class MainWindow(QMainWindow):
         super().__init__()
         load_fonts()
         self.state_path = state_path or ROOT / "user-data" / "last-project.json"
+        self.ui_path = self.state_path.parent / 'ui-preferences.json'
+        try:
+            preferences = json.loads(self.ui_path.read_text(encoding='utf-8'))
+        except (OSError, ValueError):
+            preferences = {}
+        self.dark_mode = isinstance(preferences, dict) and preferences.get('theme') == 'dark'
+        apply_theme(self.dark_mode)
+        self.setWindowIcon(app_icon())
         self.project_path = None
         self.project = Project()
         self.load_warning = ""
@@ -230,7 +240,7 @@ class MainWindow(QMainWindow):
         layout.setSpacing(12)
 
         header = QHBoxLayout()
-        header.addWidget(BauhausMark())
+        header.addWidget(AppMark())
         header.addSpacing(8)
         branding = QVBoxLayout()
         branding.setSpacing(2)
@@ -238,6 +248,10 @@ class MainWindow(QMainWindow):
         branding.addWidget(label("Record individual tracks from your MPC1000 / JJOS3", "muted"))
         header.addLayout(branding)
         header.addStretch()
+        self.theme_button = button('Theme: Dark' if self.dark_mode else 'Theme: Light', self.toggle_theme, 'quiet')
+        self.theme_button.setAccessibleName('Switch light or dark theme')
+        self.theme_button.setToolTip('Switch between light and dark. Your choice is remembered.')
+        header.addWidget(self.theme_button)
         self.new_button = button("New", self.new_project, "quiet")
         self.open_button = button("Open", self.open_project, "quiet")
         self.save_button = button("Save project", self.save_project)
@@ -442,6 +456,22 @@ class MainWindow(QMainWindow):
         if self.load_warning:
             self.log(self.load_warning)
             self.status_label.setText(self.load_warning)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        sync_titlebar(self)
+
+    def toggle_theme(self):
+        from .storage import atomic_json
+        self.dark_mode = not self.dark_mode
+        apply_theme(self.dark_mode)
+        self.theme_button.setText('Theme: Dark' if self.dark_mode else 'Theme: Light')
+        for pad in self.pads:
+            pad.update()
+        try:
+            atomic_json(self.ui_path, {'theme': 'dark' if self.dark_mode else 'light'})
+        except OSError as exc:
+            self.log('Theme changed; preference could not be saved: ' + str(exc))
 
     def log(self, message):
         self.activity.appendPlainText(f"{time.strftime('%H:%M:%S')}  {message}")
@@ -783,8 +813,12 @@ def main():
     parser = argparse.ArgumentParser(description="MPC1000 JJOS3 Stem Exporter")
     parser.add_argument("--state", type=Path, help="Override the autosave project path")
     args = parser.parse_args()
+    if sys.platform == 'win32':
+        import ctypes
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('diamondone.MPCStemExporter')
     app = QApplication(sys.argv[:1])
     app.setApplicationName("MPC Stem Exporter")
+    app.setWindowIcon(app_icon())
     app.setStyle("Fusion")
     load_fonts()
     app.setStyleSheet(STYLE)

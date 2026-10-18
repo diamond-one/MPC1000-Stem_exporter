@@ -1,6 +1,12 @@
 # Validation report
 
-## Version 0.3.0 — Bauhaus interface
+## Version 0.3.1 — application icon and Light/Dark appearance
+
+18 October 2026. All **118 tests passed**. Added checks verify that switching theme during an active recording state preserves the project, bank, queue and Stop control; the choice restores on reopening; malformed UI preferences fall back to light; both pad palettes have readable contrast; and the icon contains small and large Windows sizes.
+
+The icon is embedded in the executable and set on the Qt application and main window. Windows application identity keeps it associated with the taskbar entry. The packaged app was reviewed in both modes, including dark connection settings. Theme preferences are separate from project files. No hardware recording or transfers were performed for this update.
+
+## Version 0.3.0 — standard interface
 
 18 October 2026. All **115 tests passed** on the final source. The added checks exercise queue navigation from bank A to D while committing an edited name and preserving selections, readiness/action text, primary-button contrast, all 16 pads and Record/Stop bounds at 1040 × 760, and fixed Save/Cancel controls on both setup tabs at 710 × 620.
 
