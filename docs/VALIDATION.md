@@ -1,5 +1,13 @@
 # Validation report
 
+## Version 0.3.0 — Bauhaus interface
+
+18 October 2026. All **115 tests passed** on the final source. The added checks exercise queue navigation from bank A to D while committing an edited name and preserving selections, readiness/action text, primary-button contrast, all 16 pads and Record/Stop bounds at 1040 × 760, and fixed Save/Cancel controls on both setup tabs at 710 × 620.
+
+The Windows executable was rebuilt with bundled Space Grotesk fonts and the checkbox artwork. Native review covered the empty and populated workspace, Connections & tests, and Timing & MPC setup. All three README screenshots were captured from this build with a separate illustrative project. No personal routes or saved user project were used for documentation.
+
+The existing automated capture, cancellation, MIDI routing, audio timing and recovery tests still pass using simulated devices. No physical MPC commands or audio recordings were made during this design update. Prior hardware observations and timing limitations below still apply.
+
 19 September 2026 · Windows 11 · Python 3.12
 
 The initial automated suite passed **88 tests**. It exercises:

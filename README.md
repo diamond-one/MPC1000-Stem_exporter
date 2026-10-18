@@ -1,5 +1,7 @@
 # MPC Stem Exporter
 
+**[Download the Windows app](https://github.com/diamond-one/MPC1000-Stem_exporter/releases/latest)** · Extract the ZIP fully and open **MPC Stem Exporter.exe**.
+
 A Windows desktop app for selecting, naming and recording MPC1000
 JJOS3 tracks through a 16-pad interface. Four banks share one persistent 64-track
 model. The MIDI controller, audio recorder, exporter and UI are separate modules.
@@ -24,16 +26,19 @@ model. The MIDI controller, audio recorder, exporter and UI are separate modules
 
 ![MPC setup guide and capture timing controls](docs/screenshots/mpc-setup-guide.png)
 
-Screenshots show the application's Qt interface with example device selections;
-the meter is stopped and does not imply a verified physical audio connection.
+Screenshots show an illustrative six-track session in the actual Windows app. Connections are unconfigured and the meter is stopped. New sessions start empty.
 
 ## Current version
 
-Version **0.2.0** focuses the interface on recording from the MPC. New sessions
-start empty, with no synthetic-audio mode or example tracks. Sample rate and
-routing live in Setup; the main window shows track selection, timing and export.
-Older sample projects retain their names and selections but require hardware
-setup before recording.
+Version **0.3.0** introduces the Bauhaus interface: flat colour-coded pads,
+clear MIDI/audio directions, an interactive stem queue and recording actions
+that stay visible while settings scroll. Click a queue row to jump to its bank
+and track. The main action shows whether to select tracks, set up recording or
+record the selected stems.
+
+All four banks retain their selections and names. Recording, cancellation and
+timing behavior are unchanged. New sessions start empty and older sample
+projects still require hardware setup before recording.
 
 ## Start
 
@@ -49,20 +54,20 @@ python -m venv .venv
 ```
 
 To create a standalone executable, follow [Build the portable Windows app](#build-the-portable-windows-app).
-Prebuilt executables and recordings are not stored in Git.
+Prebuilt Windows downloads are available under [Releases](https://github.com/diamond-one/MPC1000-Stem_exporter/releases). Executables and recordings are not stored in the source tree.
 
-If you have the separately packaged portable Windows build, extract **MPC-Stem-Exporter-Windows.zip** in full
+If you have the separately packaged portable Windows build, extract **MPC-Stem-Exporter-0.3.0-Windows.zip** in full
 and open **MPC Stem Exporter.exe**. Keep `_internal` beside the executable. It
 requires no separate Python installation. This is a locally built, unsigned
 app; no installer, administrator access or background service is used.
 
-On first launch, choose **MPC & audio setup** to select and test your MIDI and
+On first launch, choose **Connections & setup** to select and test your MIDI and
 audio connections. Select tracks by clicking pads; double-click or press F2 to
 rename. Export records stereo 24-bit WAV files from your selected audio input.
 
 ## Use with the MPC
 
-Open **MPC & audio setup**, select MIDI output, audio input,
+Open **Connections & setup**, select MIDI output, audio input,
 physical left/right channels and matching MIDI receive channel. Follow the setup
 instructions there. The required mappings, official setup-file link and exact
 track isolation sequence are in [the research and specification](docs/RESEARCH-AND-SPEC.md).
@@ -75,7 +80,7 @@ closed while exporting.
 
 ### Test routing before exporting
 
-In **MPC & audio setup → Connections & tests**:
+In **Connections & setup → Connections & tests**:
 
 - **Test MIDI · bank LEDs** sends MAIN and cycles A → B → C → D → A. Watch the
   MPC screen and bank LEDs. A successful send confirms the computer sent MIDI;
@@ -100,9 +105,9 @@ audio. MIDI and audio can be tested separately, or run the meter during Play tes
 2. Name tracks if desired. Blank names use their global track number, such as
    `Track_36.wav` for Bank C pad 4.
 3. Enter sequence duration and end tail, choose an output folder. Set the sample rate in Setup.
-4. Press **EXPORT N STEMS**. The app records one selected track at a time, in
+4. Press **Record N stems**. If the button says **Set up recording…**, finish Connections & setup first. The app records one selected track at a time, in
    global order. Bank browsing remains available while editing is locked.
-5. Use **Open exported stems** when finished. Every run gets its own folder with
+5. Use **Open saved stems** when finished. Every run gets its own folder with
    WAV files and `export.json`, including completed/failed passes and capture data.
    If Windows holds `export.json` open, use the `export-recovery-…json` file
    identified in Activity for the latest state. Completed WAVs remain normal WAVs.
@@ -116,7 +121,7 @@ callback arrival and reported input latency, retaining a fixed output length.
 See the specification for the stronger reference-signal approach needed before
 making a production sample-accuracy guarantee.
 
-**Stop export** cancels the current pass, attempts MPC STOP, and keeps finished
+**Stop recording** cancels the current pass, attempts MPC STOP, and keeps finished
 files. An error stops the queue. A fresh export never overwrites previous stems.
 If a MIDI cable is disconnected, press STOP on the MPC itself. The app cannot read
 the MPC's previous mute state; it leaves the last isolation in place. F2 CLEAR on
@@ -135,7 +140,7 @@ Interrupted queued/recording statuses reset on reopen; completed statuses remain
 | Name a track | Double-click, F2, or use the name field below the grid |
 | Confirm/cancel a name | Enter / Escape |
 | Navigate pads | Arrow keys; Tab to move between other controls |
-| Select/Clear all 64 | Select all / Clear all |
+| Select/Clear all 64 | Select all 64 / Clear selection |
 | Select/Clear visible 16 | Select bank / Clear bank |
 | Save/Open project | Ctrl+S / Ctrl+O |
 
@@ -179,5 +184,6 @@ Distribute the complete directory, including `_internal`. Use the supplied build
 script so unrelated DLLs on the system PATH are excluded from the package.
 
 The application is unassociated with Akai or JJ. It includes no third-party
-branding, setup binary or controller executable. Python, Qt for Python/PySide6,
+branding, setup binary or controller executable. Space Grotesk is bundled under
+the SIL Open Font License. Python, Qt for Python/PySide6,
 NumPy, Mido, RtMidi, PortAudio and libsndfile retain their respective licenses.

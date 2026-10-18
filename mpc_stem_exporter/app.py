@@ -8,11 +8,11 @@ import time
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QThread, QTimer, Signal, QRectF, QUrl
-from PySide6.QtGui import QColor, QDesktopServices, QFont, QKeySequence, QLinearGradient, QPainter, QPen, QShortcut
+from PySide6.QtGui import QColor, QDesktopServices, QFont, QKeySequence, QPainter, QPen, QShortcut
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog, QDialogButtonBox,
     QDoubleSpinBox, QFileDialog, QFormLayout, QFrame, QGridLayout, QHBoxLayout, QLabel,
     QLineEdit, QListWidget, QMainWindow, QMessageBox, QPlainTextEdit, QProgressBar,
-    QPushButton, QSizePolicy, QSpinBox, QTextBrowser, QVBoxLayout, QWidget)
+    QPushButton, QScrollArea, QSizePolicy, QSpinBox, QTextBrowser, QVBoxLayout, QWidget)
 
 from .exporter import StemExporter
 from . import __version__
@@ -20,45 +20,9 @@ from .model import BANKS, PAD_ORDER, Project, Track, plan_filenames, safe_stem
 from .setup_dialog import SetupDialog
 
 ROOT = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
-ACCENT = "#efa85d"
+from .theme import STYLE, BLUE, RED, YELLOW, PAPER, SURFACE, INK, MUTED, load_fonts
 
-STYLE = """
-QWidget { background: #191b1e; color: #e6e3dd; font-family: 'Segoe UI'; font-size: 13px; }
-QMainWindow { background: #191b1e; }
-QLabel { background: transparent; }
-QLabel#eyebrow { color: #999b9e; font-size: 10px; font-weight: 700; letter-spacing: 2px; }
-QLabel#muted { color: #93979d; font-size: 12px; }
-QLabel#title { font-size: 27px; font-weight: 800; letter-spacing: 1px; }
-QLabel#badge { color: #efa85d; background: #332b23; border: 1px solid #5b4631; border-radius: 4px; padding: 6px 10px; font-size: 10px; font-weight: 700; }
-QFrame#card { background: #222529; border: 1px solid #34373b; border-radius: 9px; }
-QPushButton { background: #2b2e33; border: 1px solid #41444a; border-radius: 5px; padding: 9px 14px; font-weight: 600; }
-QPushButton:hover { background: #373b40; border-color: #64676c; }
-QPushButton:focus { border: 1px solid #efa85d; }
-QPushButton:disabled { color: #676b70; background: #24262a; border-color: #35383c; }
-QPushButton#primary { background: #efa85d; color: #211a14; border: 1px solid #ffc17d; font-size: 14px; font-weight: 800; padding: 17px; }
-QPushButton#primary:hover { background: #ffc17d; }
-QPushButton#primary:disabled { background: #514332; color: #99846a; border-color: #514332; }
-QPushButton#bank { padding: 10px 18px; font-size: 14px; font-weight: 800; }
-QPushButton#bank:checked { background: #efa85d; color: #211a14; border-color: #ffc17d; }
-QPushButton#quiet { border-color: transparent; background: transparent; color: #b3b5b8; padding: 7px 9px; }
-QPushButton#quiet:hover { color: #efa85d; background: #2a2c30; }
-QPushButton#cancel { color: #f19987; border-color: #81574d; }
-QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox { background: #17191c; border: 1px solid #44474c; border-radius: 4px; padding: 7px; selection-background-color: #87643d; }
-QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus { border-color: #efa85d; }
-QLineEdit:disabled, QComboBox:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled { color: #74777c; }
-QComboBox QAbstractItemView { background: #25282c; color: #e6e3dd; selection-background-color: #554331; }
-QListWidget, QPlainTextEdit, QTextBrowser { background: #191c1f; border: 1px solid #34373b; border-radius: 5px; padding: 7px; }
-QListWidget::item { padding: 5px 3px; color: #c2c5c8; }
-QProgressBar { background: #131518; border: none; border-radius: 3px; max-height: 6px; min-height: 6px; }
-QProgressBar::chunk { background: #efa85d; border-radius: 3px; }
-QCheckBox { spacing: 8px; background: transparent; }
-QCheckBox::indicator { width: 16px; height: 16px; border: 1px solid #65676b; border-radius: 3px; background: #1a1c1f; }
-QCheckBox::indicator:checked { background: #efa85d; border-color: #ffc17d; image: none; }
-QToolTip { color: #eee; background: #31353a; border: 1px solid #6a6d70; padding: 5px; }
-QScrollBar:vertical { width: 8px; background: #1b1d20; }
-QScrollBar::handle:vertical { background: #53575c; border-radius: 4px; min-height: 20px; }
-QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
-"""
+ACCENT = BLUE
 
 
 def label(text, role=None):
@@ -107,7 +71,7 @@ class Pad(QPushButton):
         self.timer = QTimer(self)
         self.timer.setSingleShot(True)
         self.timer.timeout.connect(lambda: self.toggle_track.emit(self.pending_number))
-        self.setMinimumSize(112, 100)
+        self.setMinimumSize(108, 82)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -162,48 +126,60 @@ class Pad(QPushButton):
     def paintEvent(self, event):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        r = QRectF(self.rect()).adjusted(2, 2, -2, -5)
+        r = QRectF(self.rect()).adjusted(2, 2, -2, -2)
         t = self.track
-        top, bottom, edge = "#383b40", "#2c2f34", "#494c52"
-        marker = "#62666c"
+        background, foreground, edge = '#DCD8C9', INK, '#DCD8C9'
+        state, marker = ('Selected', RED) if t.selected else ('Not selected', MUTED)
         if t.selected:
-            top, bottom, edge, marker = "#514536", "#3d352c", "#987345", ACCENT
-        if t.status == "complete":
-            top, bottom, edge, marker = "#303f39", "#29352f", "#608770", "#9ec7ad"
-        elif t.status == "error":
-            top, bottom, edge, marker = "#4b3431", "#3a2a28", "#a76c62", "#f19987"
-        elif t.status == "recording":
-            top, bottom, edge, marker = "#74502d", "#51402b", "#efb76f", "#ffcc80"
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QColor("#101214"))
-        p.drawRoundedRect(r.translated(0, 4), 7, 7)
-        gradient = QLinearGradient(r.topLeft(), r.bottomLeft())
-        gradient.setColorAt(0, QColor(top))
-        gradient.setColorAt(1, QColor(bottom))
-        p.setBrush(gradient)
+            background, foreground, edge = RED, '#FFF8E7', RED
+        if t.status == 'complete':
+            background, foreground, edge = '#DCE4F3', '#193A77', BLUE
+            state, marker = 'Saved', BLUE
+        elif t.status == 'error':
+            background, foreground, edge = '#F0D9D3', '#8D2927', RED
+            state, marker = 'Error', RED
+        elif t.status == 'recording':
+            background, foreground, edge = RED, '#FFF8E7', RED
+            state, marker = 'Recording', '#FFF8E7'
+        elif t.status == 'queued':
+            state, marker = 'Waiting', '#FFF8E7' if t.selected else BLUE
+        p.setBrush(QColor(background))
         p.setPen(QPen(QColor(edge), 1))
-        p.drawRoundedRect(r, 7, 7)
+        p.drawRect(r)
         if self.hasFocus():
-            p.setPen(QPen(QColor("#f9d8a9"), 1))
+            p.setPen(QPen(QColor('#FFF8E7' if background == RED else BLUE), 2))
             p.setBrush(Qt.BrushStyle.NoBrush)
-            p.drawRoundedRect(r.adjusted(3, 3, -3, -3), 5, 5)
-        p.setPen(QColor("#ede5d9") if t.selected else QColor("#b5b7ba"))
-        p.setFont(QFont("Segoe UI", 19, QFont.Weight.DemiBold))
-        p.drawText(r.adjusted(14, 9, -12, 0), Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft, f"{t.number:02}")
-        p.setFont(QFont("Consolas", 9))
-        p.setPen(QColor(marker))
-        p.drawText(r.adjusted(0, 13, -13, 0), Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight, f"{t.bank}{t.pad:02}")
-        p.setFont(QFont("Segoe UI", 10, QFont.Weight.DemiBold))
-        p.setPen(QColor("#e6ded1") if t.selected else QColor("#969a9f"))
-        text = p.fontMetrics().elidedText(t.name, Qt.TextElideMode.ElideRight, int(r.width() - 28))
-        p.drawText(r.adjusted(14, 48, -10, 0), Qt.AlignmentFlag.AlignTop, text)
-        status = {"recording": "●  RECORDING", "complete": "✓  EXPORTED", "error": "!  ERROR", "queued": "·  WAITING"}.get(t.status, "●  SELECTED" if t.selected else "—")
-        p.setFont(QFont("Segoe UI", 8, QFont.Weight.DemiBold))
-        color = QColor(marker)
-        if t.status == "recording":
-            color.setAlphaF(0.6 + 0.4 * abs(math.sin(self.phase)))
-        p.setPen(color)
-        p.drawText(r.adjusted(14, 0, -10, -11), Qt.AlignmentFlag.AlignBottom, status)
+            p.drawRect(r.adjusted(4, 4, -4, -4))
+        p.setPen(QColor(foreground))
+        p.setFont(QFont('Space Grotesk', 18, QFont.Weight.DemiBold))
+        p.drawText(r.adjusted(13, 7, -12, 0), Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft, f'{t.number:02}')
+        p.setFont(QFont('Segoe UI', 9))
+        p.drawText(r.adjusted(0, 11, -13, 0), Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight, f'{t.bank}{t.pad:02}')
+        p.setFont(QFont('Segoe UI', 10, QFont.Weight.DemiBold))
+        text = p.fontMetrics().elidedText(t.name, Qt.TextElideMode.ElideRight, int(r.width() - 26))
+        p.drawText(r.adjusted(13, 37, -10, -20), Qt.AlignmentFlag.AlignTop, text)
+        p.setFont(QFont('Segoe UI', 8))
+        p.setPen(QColor(foreground if t.selected else marker))
+        p.drawText(r.adjusted(13, 0, -10, -8), Qt.AlignmentFlag.AlignBottom, state)
+        p.end()
+
+
+class BauhausMark(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setFixedSize(48, 43)
+        self.setAccessibleName('MPC Stem Exporter')
+
+    def paintEvent(self, event):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(RED))
+        p.drawEllipse(QRectF(0, 0, 27, 27))
+        p.setBrush(QColor(BLUE))
+        p.drawRect(QRectF(24, 18, 23, 23))
+        p.setBrush(QColor(YELLOW))
+        p.drawRect(QRectF(0, 34, 21, 7))
         p.end()
 
 
@@ -225,6 +201,7 @@ class Worker(QThread):
 class MainWindow(QMainWindow):
     def __init__(self, state_path: Path | None = None):
         super().__init__()
+        load_fonts()
         self.state_path = state_path or ROOT / "user-data" / "last-project.json"
         self.project_path = None
         self.project = Project()
@@ -244,19 +221,21 @@ class MainWindow(QMainWindow):
         self.busy = False
         self.last_directory = None
         self.setWindowTitle(f"MPC Stem Exporter {__version__}")
-        self.resize(1130, 900)
-        self.setMinimumSize(1000, 880)
+        self.resize(1240, 860)
+        self.setMinimumSize(1040, 760)
         central = QWidget()
         self.setCentralWidget(central)
         layout = QVBoxLayout(central)
-        layout.setContentsMargins(28, 24, 28, 18)
-        layout.setSpacing(19)
+        layout.setContentsMargins(20, 18, 20, 14)
+        layout.setSpacing(12)
 
         header = QHBoxLayout()
+        header.addWidget(BauhausMark())
+        header.addSpacing(8)
         branding = QVBoxLayout()
         branding.setSpacing(2)
-        branding.addWidget(label("MPC  /  STEM EXPORTER", "title"))
-        branding.addWidget(label("MPC1000 · JJOS3", "muted"))
+        branding.addWidget(label("MPC Stem Exporter", "title"))
+        branding.addWidget(label("Record individual tracks from your MPC1000 / JJOS3", "muted"))
         header.addLayout(branding)
         header.addStretch()
         self.new_button = button("New", self.new_project, "quiet")
@@ -268,21 +247,22 @@ class MainWindow(QMainWindow):
         layout.addLayout(header)
 
         connection = QFrame()
-        connection.setObjectName("card")
+        connection.setObjectName("connectionStrip")
         row = QHBoxLayout(connection)
         row.setContentsMargins(16, 11, 12, 11)
         self.connection_label = label("", "muted")
+        self.connection_label.setWordWrap(True)
         row.addWidget(self.connection_label, 1)
-        self.setup_button = button("MPC && audio setup", self.setup)
+        self.setup_button = button("Connections && setup", self.setup)
         row.addWidget(self.setup_button)
         layout.addWidget(connection)
 
         body = QHBoxLayout()
-        body.setSpacing(25)
+        body.setSpacing(20)
         pads_column = QVBoxLayout()
-        pads_column.setSpacing(12)
+        pads_column.setSpacing(8)
         bankrow = QHBoxLayout()
-        bankrow.addWidget(label("PAD BANK", "eyebrow"))
+        bankrow.addWidget(label("Track bank", "trackLabel"))
         bankrow.addSpacing(10)
         self.bank_buttons = {}
         for bank in BANKS:
@@ -292,11 +272,11 @@ class MainWindow(QMainWindow):
             bankrow.addWidget(b)
             self.bank_buttons[bank] = b
         bankrow.addStretch()
-        self.bank_range = label("TRACKS 01—16", "eyebrow")
+        self.bank_range = label("Tracks 01–16", "muted")
         bankrow.addWidget(self.bank_range)
         pads_column.addLayout(bankrow)
         grid = QGridLayout()
-        grid.setSpacing(11)
+        grid.setSpacing(8)
         self.pads = []
         for i, track in enumerate(self.project.bank_tracks(self.bank)):
             pad = Pad(track)
@@ -311,7 +291,7 @@ class MainWindow(QMainWindow):
         pads_column.addLayout(grid, 1)
         actions = QHBoxLayout()
         self.selection_buttons = []
-        for text, enabled, bank_only in (("Select all", True, False), ("Clear all", False, False),
+        for text, enabled, bank_only in (("Select all 64", True, False), ("Clear selection", False, False),
                                           ("Select bank", True, True), ("Clear bank", False, True)):
             b = button(text, lambda checked=False, on=enabled, local=bank_only: self.select_tracks(on, local), "quiet")
             self.selection_buttons.append(b)
@@ -320,17 +300,14 @@ class MainWindow(QMainWindow):
         pads_column.addLayout(actions)
 
         editor = QFrame()
-        editor.setObjectName("card")
+        editor.setObjectName("trackEditor")
         el = QVBoxLayout(editor)
-        el.setContentsMargins(15, 12, 15, 12)
+        el.setContentsMargins(12, 9, 12, 9)
         er = QHBoxLayout()
-        self.editor_label = label("TRACK 01", "eyebrow")
+        self.editor_label = label("Track 01", "trackLabel")
         er.addWidget(self.editor_label)
-        er.addStretch()
         self.include = QCheckBox("Export this track")
         self.include.toggled.connect(self.set_included)
-        er.addWidget(self.include)
-        el.addLayout(er)
         self.name_edit = NameEdit()
         self.name_edit.setPlaceholderText("Name this track…")
         self.name_edit.setAccessibleName("Track name")
@@ -338,20 +315,34 @@ class MainWindow(QMainWindow):
         self.name_edit.returnPressed.connect(self.commit_name)
         self.name_edit.cancelled.connect(self.cancel_name)
         self.name_edit.editingFinished.connect(self.commit_name)
-        el.addWidget(self.name_edit)
+        er.addWidget(self.name_edit, 1)
+        er.addWidget(self.include)
+        el.addLayout(er)
         self.filename_label = label("", "muted")
         el.addWidget(self.filename_label)
         pads_column.addWidget(editor)
         body.addLayout(pads_column, 7)
 
         sidebar = QFrame()
-        sidebar.setObjectName("card")
-        sidebar.setMinimumWidth(300)
-        sidebar.setMaximumWidth(340)
-        side = QVBoxLayout(sidebar)
-        side.setContentsMargins(19, 20, 19, 18)
-        side.setSpacing(12)
-        side.addWidget(label("CAPTURE SESSION", "eyebrow"))
+        sidebar.setObjectName("sessionPanel")
+        sidebar.setMinimumWidth(330)
+        sidebar.setMaximumWidth(380)
+        panel = QVBoxLayout(sidebar)
+        panel.setContentsMargins(0, 0, 0, 12)
+        panel.setSpacing(8)
+        self.session_scroll = QScrollArea()
+        self.session_scroll.setWidgetResizable(True)
+        self.session_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.session_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.session_scroll.setAccessibleName('Recording settings')
+        settings_body = QWidget()
+        settings_body.setObjectName('recordingSettings')
+        side = QVBoxLayout(settings_body)
+        side.setContentsMargins(16, 15, 16, 10)
+        side.setSpacing(10)
+        self.session_scroll.setWidget(settings_body)
+        panel.addWidget(self.session_scroll, 1)
+        side.addWidget(label('Recording session', 'section'))
         self.title_edit = QLineEdit(self.project.title)
         self.title_edit.setAccessibleName("Session name")
         self.title_edit.editingFinished.connect(self.update_settings)
@@ -375,42 +366,51 @@ class MainWindow(QMainWindow):
         self.format_label.setWordWrap(True)
         side.addWidget(self.format_label)
         side.addSpacing(2)
-        side.addWidget(label("OUTPUT FOLDER", "eyebrow"))
+        side.addWidget(label("Save stems to", "trackLabel"))
         folderrow = QHBoxLayout()
         self.folder_edit = QLineEdit()
         self.folder_edit.setAccessibleName("Output directory")
         self.folder_edit.editingFinished.connect(self.update_settings)
-        self.browse_button = button("…", self.browse_folder)
+        self.browse_button = button("Browse", self.browse_folder)
         self.browse_button.setAccessibleName("Choose output folder")
-        self.browse_button.setMaximumWidth(38)
+        self.browse_button.setMaximumWidth(80)
         folderrow.addWidget(self.folder_edit)
         folderrow.addWidget(self.browse_button)
         side.addLayout(folderrow)
-        side.addWidget(label("STEM QUEUE", "eyebrow"))
+        self.queue_heading = label("Stem queue", "section")
+        side.addWidget(self.queue_heading)
         self.queue_list = QListWidget()
-        self.queue_list.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.queue_list.setMinimumHeight(110)
+        self.queue_list.setAccessibleName("Selected tracks — activate to jump to a pad")
+        self.queue_list.itemClicked.connect(self.focus_queued_track)
+        self.queue_list.itemActivated.connect(self.focus_queued_track)
+        self.queue_list.setMinimumHeight(100)
         side.addWidget(self.queue_list, 1)
         self.estimate = label("", "muted")
-        side.addWidget(self.estimate)
-        self.export_button = button("EXPORT STEMS", self.start_export, "primary")
-        side.addWidget(self.export_button)
-        self.cancel_button = button("Stop export", self.cancel_export, "cancel")
+        self.estimate.setWordWrap(True)
+        self.estimate.setContentsMargins(16, 0, 16, 0)
+        panel.addWidget(self.estimate)
+        self.readiness = label('', 'readiness')
+        self.readiness.setWordWrap(True)
+        self.readiness.setContentsMargins(16, 0, 16, 0)
+        panel.addWidget(self.readiness)
+        self.export_button = button('Select tracks to record', self.start_export, 'primary')
+        panel.addWidget(self.export_button)
+        self.cancel_button = button("Stop recording", self.cancel_export, "cancel")
         self.cancel_button.hide()
-        side.addWidget(self.cancel_button)
-        self.open_output = button("Open exported stems  ↗", self.open_recordings, "quiet")
+        panel.addWidget(self.cancel_button)
+        self.open_output = button("Open saved stems", self.open_recordings, "quiet")
         self.open_output.hide()
-        side.addWidget(self.open_output)
+        panel.addWidget(self.open_output)
         body.addWidget(sidebar, 3)
         layout.addLayout(body, 1)
 
         footer = QVBoxLayout()
         footer.setSpacing(7)
         statusrow = QHBoxLayout()
-        self.status_label = label("Select tracks to export.")
+        self.status_label = label("Choose the tracks you want to record.")
         self.status_label.setWordWrap(True)
         statusrow.addWidget(self.status_label, 1)
-        self.meter_label = label("INPUT  —", "eyebrow")
+        self.meter_label = label("Input —", "muted")
         statusrow.addWidget(self.meter_label)
         self.log_button = button("Activity", self.toggle_log, "quiet")
         statusrow.addWidget(self.log_button)
@@ -488,11 +488,18 @@ class MainWindow(QMainWindow):
             count = sum(t.selected for t in self.project.tracks if t.bank == bank)
             b.setToolTip(f"Bank {bank} · {count} selected")
         start = BANKS.index(self.bank) * 16 + 1
-        self.bank_range.setText(f"TRACKS {start:02}—{start + 15:02}")
+        self.bank_range.setText(f"Tracks {start:02}–{start + 15:02}")
         for pad, track in zip(self.pads, self.project.bank_tracks(self.bank)):
             pad.set_track(track)
             pad.editable = not self.busy
-        self.export_button.setText(f"EXPORT {n} {'STEM' if n == 1 else 'STEMS'}" if n else "EXPORT STEMS")
+        s = self.project.settings
+        ready = bool(s.setup_verified and s.midi_port and s.audio_device)
+        self.export_button.setText(('Record ' + str(n) + (' stem' if n == 1 else ' stems'))
+            if n and ready else 'Set up recording…' if n else 'Select tracks to record')
+        self.readiness.setText('Recording in progress. Stop is available below.' if self.busy else
+            'Choose pads to add tracks to the queue.' if not n else
+            'Connections and MPC setup need checking.' if not ready else 'Ready to record the selected tracks.')
+        self.queue_heading.setText(f'Stem queue ({n})' if n else 'Stem queue')
         self.export_button.setEnabled(bool(n) and not self.busy)
         for control in [self.new_button, self.open_button, self.save_button, self.setup_button,
                         self.name_edit, self.include, self.seq, self.tail,
@@ -503,18 +510,28 @@ class MainWindow(QMainWindow):
         self.meter_label.setVisible(self.busy)
         s = self.project.settings
         self.connection_label.setText(
-            f"MIDI  {s.midi_port or 'Choose output'}   /   AUDIO  {s.audio_device or 'Choose input'}")
+            f"MIDI to MPC: {s.midi_port or 'Choose output'}\nAudio from MPC: {s.audio_device or 'Choose input'}")
         self.connection_label.setToolTip(self.connection_label.text())
         self.format_label.setText(f"{s.sample_rate / 1000:g} kHz · 24-bit stereo WAV")
         seconds = s.frames / s.sample_rate
-        self.estimate.setText(f"{n:02} stems  ·  {duration(seconds)} each  ·  ~{duration(n * (seconds + s.settle_seconds + 1))} total")
+        self.estimate.setText(f"{n} {'stem' if n == 1 else 'stems'} · {duration(seconds)} each · about {duration(n * (seconds + s.settle_seconds + 1))} total")
         self.queue_list.clear()
         files = plan_filenames(selected, Path(".__unused_filename_preview__"))
         for t in selected:
-            mark = {"complete": "✓", "error": "!", "recording": "●"}.get(t.status, "·")
-            self.queue_list.addItem(f"{t.number:02}   {files[t.number].name}   {mark}")
+            status = {'complete': 'Saved', 'error': 'Error', 'recording': 'Recording', 'queued': 'Waiting'}.get(t.status, 'Selected')
+            self.queue_list.addItem(f'{t.bank}{t.pad:02}   {files[t.number].name}   {status}')
+            self.queue_list.item(self.queue_list.count() - 1).setData(Qt.ItemDataRole.UserRole, t.number)
         if not selected:
             self.queue_list.addItem("Choose pads to build your stem queue.")
+
+    def focus_queued_track(self, item):
+        number = item.data(Qt.ItemDataRole.UserRole)
+        if not isinstance(number, int) or not 1 <= number <= 64:
+            return
+        track = self.project.tracks[number - 1]
+        self.switch_bank(track.bank)
+        self.focus_track(number)
+        next(pad for pad in self.pads if pad.track.number == number).setFocus()
 
     def switch_bank(self, bank):
         if not self.busy:
@@ -531,7 +548,7 @@ class MainWindow(QMainWindow):
             self.commit_name()
         self.focused = number
         track = self.project.tracks[number - 1]
-        self.editor_label.setText(f"TRACK {number:02}  /  {track.bank}{track.pad:02}")
+        self.editor_label.setText(f"Track {number:02} / {track.bank}{track.pad:02}")
         self.name_edit.setText(track.custom_name)
         self.name_edit.setPlaceholderText(f"Track_{number}")
         self.include.blockSignals(True)
@@ -681,7 +698,7 @@ class MainWindow(QMainWindow):
         self.status_label.setText("Preparing export…")
         self.progress.setValue(0)
         self.cancel_button.setEnabled(True)
-        self.cancel_button.setText("Stop export")
+        self.cancel_button.setText("Stop recording")
         self.refresh()
         self.worker = Worker(self.project)
         self.worker.event.connect(self.handle_event)
@@ -769,6 +786,7 @@ def main():
     app = QApplication(sys.argv[:1])
     app.setApplicationName("MPC Stem Exporter")
     app.setStyle("Fusion")
+    load_fonts()
     app.setStyleSheet(STYLE)
     window = MainWindow(args.state)
     window.show()

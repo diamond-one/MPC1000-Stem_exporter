@@ -20,5 +20,6 @@ run(['--noconfirm', '--clean', '--windowed', '--onedir', '--name', 'MPC Stem Exp
      '--distpath', str(Path(args.distpath).resolve()),
      '--workpath', str(Path(args.workpath).resolve()),
      '--specpath', str(Path(args.specpath).resolve()),
+     '--add-data', str(root / 'mpc_stem_exporter/assets') + os.pathsep + 'mpc_stem_exporter/assets',
      '--hidden-import', 'mido.backends.rtmidi', '--hidden-import', 'rtmidi',
      str(root / 'launch.py')])

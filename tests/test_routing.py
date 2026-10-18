@@ -203,3 +203,20 @@ def test_midi_can_be_tested_before_audio_is_configured(dialog, monkeypatch):
         QTest.qWait(20)
     assert dialog.midi_worker is None
     assert c.calls == ['connect', 'banks', 'close']
+
+
+def test_small_setup_keeps_save_and_cancel_outside_scroll(dialog):
+    from PySide6.QtCore import QPoint
+    from PySide6.QtWidgets import QDialogButtonBox, QScrollArea
+    dialog.resize(710, 620)
+    QApplication.processEvents()
+    assert dialog.size().width() == 710 and dialog.size().height() == 620
+    for index in range(dialog.tabs.count()):
+        dialog.tabs.setCurrentIndex(index)
+        QApplication.processEvents()
+        assert isinstance(dialog.tabs.widget(index), QScrollArea)
+        for role in (QDialogButtonBox.StandardButton.Save, QDialogButtonBox.StandardButton.Cancel):
+            b = dialog.buttons.button(role)
+            assert b.isVisible()
+            assert dialog.rect().contains(b.rect().translated(b.mapTo(dialog, QPoint(0, 0))))
+    assert 'Send MIDI' in dialog.findChildren(__import__('PySide6.QtWidgets', fromlist=['QGroupBox']).QGroupBox)[0].title()

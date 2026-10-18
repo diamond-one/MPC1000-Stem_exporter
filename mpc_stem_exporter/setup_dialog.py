@@ -8,7 +8,7 @@ import time
 from PySide6.QtCore import QThread, QTimer, Signal
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox,
     QDoubleSpinBox, QFormLayout, QGroupBox, QHBoxLayout, QLabel, QMessageBox,
-    QProgressBar, QPushButton, QSpinBox, QTabWidget, QTextBrowser, QVBoxLayout, QWidget)
+    QProgressBar, QPushButton, QScrollArea, QSpinBox, QTabWidget, QTextBrowser, QVBoxLayout, QWidget)
 
 from .controller import Cancelled, MPCController, pause
 from .recorder import InputMonitor, audio_devices
@@ -88,12 +88,12 @@ class SetupDialog(QDialog):
         self.pending_result = None
         self.levels = [0.0, 0.0]
         self.last_signal = [0.0, 0.0]
-        self.setWindowTitle("MPC & audio setup")
-        self.setMinimumWidth(710)
+        self.setWindowTitle("Connections & MPC setup")
+        self.setMinimumSize(710, 620)
         self.resize(760, 770)
         layout = QVBoxLayout(self)
         layout.setSpacing(12)
-        title = text_label("MPC & AUDIO SETUP", "title")
+        title = text_label("Connections & MPC setup", "dialogTitle")
         heading = QHBoxLayout()
         heading.addWidget(title)
         heading.addStretch()
@@ -101,14 +101,17 @@ class SetupDialog(QDialog):
         self.tabs = QTabWidget()
         layout.addWidget(self.tabs, 1)
         connections = QWidget()
-        self.tabs.addTab(connections, "Connections && tests")
+        connections_scroll = QScrollArea()
+        connections_scroll.setWidgetResizable(True)
+        connections_scroll.setWidget(connections)
+        self.tabs.addTab(connections_scroll, "Connections && tests")
         connect_layout = QVBoxLayout(connections)
         connect_layout.setSpacing(12)
         self.refresh_button = QPushButton("Refresh devices")
         self.refresh_button.clicked.connect(self.refresh_devices)
         heading.addWidget(self.refresh_button)
 
-        midi_box = QGroupBox("1  ·  MIDI to the MPC")
+        midi_box = QGroupBox("Send MIDI to the MPC")
         ml = QVBoxLayout(midi_box)
         mf = QFormLayout()
         self.midi = QComboBox()
@@ -133,7 +136,7 @@ class SetupDialog(QDialog):
         ml.addWidget(self.midi_status)
         connect_layout.addWidget(midi_box)
 
-        audio_box = QGroupBox("2  ·  Audio from the MPC")
+        audio_box = QGroupBox("Record audio from the MPC")
         al = QVBoxLayout(audio_box)
         af = QFormLayout()
         self.audio = QComboBox()
@@ -167,7 +170,7 @@ class SetupDialog(QDialog):
             meter.setRange(0, 600)
             meter.setValue(0)
             meter.setTextVisible(False)
-            meter.setStyleSheet("QProgressBar { min-height: 16px; max-height: 16px; } QProgressBar::chunk { background: #91bb9c; }")
+            meter.setStyleSheet("QProgressBar { min-height: 16px; max-height: 16px; } QProgressBar::chunk { background: #244ba4; }")
             row.addWidget(meter, 1)
             value = text_label("−∞ dBFS")
             value.setMinimumWidth(104)
@@ -194,7 +197,10 @@ class SetupDialog(QDialog):
         connect_layout.addStretch()
 
         advanced = QWidget()
-        self.tabs.addTab(advanced, "Timing && MPC setup")
+        advanced_scroll = QScrollArea()
+        advanced_scroll.setWidgetResizable(True)
+        advanced_scroll.setWidget(advanced)
+        self.tabs.addTab(advanced_scroll, "Timing && MPC setup")
         adv = QVBoxLayout(advanced)
         form = QFormLayout()
         self.preroll, self.settle = QDoubleSpinBox(), QDoubleSpinBox()
@@ -237,12 +243,14 @@ class SetupDialog(QDialog):
         alignment remains approximate. The capture mode is logged and saved in the manifest.</p>
         <p>The meter stops when you change the audio route or close Setup, releasing the input
         for export. Previous MPC mute states cannot be read or restored.</p>
-        <p><a style='color:#efa85d' href='https://www7a.biglobe.ne.jp/~mpc1000/mpc-ctl/index.htm'>Official JJ setup & mappings</a></p>""")
+        <p><a style='color:#244ba4' href='https://www7a.biglobe.ne.jp/~mpc1000/mpc-ctl/index.htm'>Official JJ setup & mappings</a></p>""")
         adv.addWidget(guide, 1)
         self.verified = QCheckBox("I checked the MPC setup, routing, and sequence behavior.")
         self.verified.setChecked(settings.setup_verified)
         layout.addWidget(self.verified)
         self.buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
+        self.buttons.button(QDialogButtonBox.StandardButton.Save).setObjectName('saveSetup')
+        self.buttons.button(QDialogButtonBox.StandardButton.Save).setText('Save setup')
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
         layout.addWidget(self.buttons)
@@ -390,7 +398,7 @@ class SetupDialog(QDialog):
             if peak >= 0.001:
                 self.last_signal[i] = now
             self.level_labels[i].setText("CLIP" if data['clipped'][i] else (f"{db:.1f} dBFS" if db > -90 else "−∞ dBFS"))
-            self.level_labels[i].setStyleSheet("color: #ff8f7b; font-weight: bold;" if data['clipped'][i] else "")
+            self.level_labels[i].setStyleSheet("color: #b63230; font-weight: bold;" if data['clipped'][i] else "")
         sides = [side for i, side in enumerate(('L', 'R')) if now - self.last_signal[i] < 0.8]
         if any(data['clipped']):
             self.audio_status.setText("Input clipped. Lower the audio-interface gain, then reset the clip indicators.")

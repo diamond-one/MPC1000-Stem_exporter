@@ -34,7 +34,7 @@ def test_native_grid_bank_persistence_rename_and_keyboard(tmp_path):
     w.switch_bank("C")
     assert pad.track.name == "Bass"
     assert pad.track.selected
-    assert w.export_button.text() == "EXPORT 1 STEM"
+    assert w.export_button.text() == "Set up recording…"
     w.name_edit.setText("Cancelled name")
     QTest.keyClick(w.name_edit, Qt.Key.Key_Escape)
     QTest.keyClick(w.name_edit, Qt.Key.Key_Return)
@@ -110,4 +110,48 @@ def test_legacy_sample_project_requires_hardware_setup(tmp_path):
     assert w.project.tracks[0].name == 'Kick'
     assert w.project.tracks[0].selected
     assert w.project.tracks[0].status == 'idle'
+    w.close()
+
+
+def test_minimum_window_keeps_pads_and_recording_actions_visible(tmp_path):
+    from PySide6.QtCore import QPoint
+    app, w = window(tmp_path)
+    w.resize(1040, 760)
+    w.toggle_track(1)
+    w.busy = True
+    w.refresh()
+    app.processEvents()
+    assert w.width() == 1040 and w.height() == 760
+    for control in [*w.pads, w.export_button, w.cancel_button, w.name_edit]:
+        rect = control.rect().translated(control.mapTo(w, QPoint(0, 0)))
+        assert w.rect().contains(rect), (control.accessibleName(), rect)
+        assert control.width() >= 80
+    assert w.name_edit.width() >= 170
+    assert w.cancel_button.isVisible()
+    assert w.session_scroll.horizontalScrollBar().maximum() == 0
+    w.busy = False
+    w.close()
+
+
+def test_queue_jump_preserves_other_banks_and_uncommitted_names(tmp_path):
+    app, w = window(tmp_path)
+    w.toggle_track(1)
+    w.toggle_track(49)
+    w.focus_track(1)
+    w.name_edit.setText('Kick edited')
+    item = next(w.queue_list.item(i) for i in range(w.queue_list.count())
+                if w.queue_list.item(i).data(Qt.ItemDataRole.UserRole) == 49)
+    w.focus_queued_track(item)
+    assert w.bank == 'D' and w.focused == 49
+    assert w.project.tracks[0].name == 'Kick edited'
+    assert [t.number for t in w.project.selected_tracks()] == [1, 49]
+    assert next(p for p in w.pads if p.track.number == 49).hasFocus()
+    w.project.settings.midi_port = 'Test MIDI'
+    w.project.settings.audio_device = 'Test audio'
+    w.project.settings.setup_verified = True
+    w.refresh()
+    assert w.export_button.text() == 'Record 2 stems'
+    from PySide6.QtGui import QPalette
+    assert w.export_button.palette().color(QPalette.ColorRole.Button).name() == '#244ba4'
+    assert w.export_button.palette().color(QPalette.ColorRole.ButtonText).name() == '#fff8e7'
     w.close()
