@@ -90,6 +90,11 @@ class MPCController:
         if self.port is not None:
             self._note("stop", settle=False)
 
+    def clear_mutes(self) -> None:
+        """Clear all 64 track mutes; previous mute state is not readable."""
+        for action in ("main", "track_mute", "clear_mutes"):
+            self._note(action)
+
     def close(self) -> None:
         if self.port is not None:
             self.port.close()
@@ -115,3 +120,6 @@ class DemoController:
 
     def close(self):
         pass
+
+    def clear_mutes(self):
+        self.log("DEMO: clear all track mutes")

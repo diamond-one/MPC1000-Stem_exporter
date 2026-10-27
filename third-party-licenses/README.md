@@ -2,7 +2,7 @@
 
 This application uses unmodified third-party runtimes. Their notices are included
 in this directory. The Windows package keeps shared libraries in `_internal`.
-Application source is supplied separately as the source archive attached to each GitHub release.
+Application source is supplied separately as MPC-Stem-Exporter-Source.zip.
 
 - Qt for Python / PySide6: https://code.qt.io/cgit/pyside/pyside-setup.git/
 - Qt: https://code.qt.io/cgit/qt/qtbase.git/
@@ -14,5 +14,3 @@ Application source is supplied separately as the source archive attached to each
 - soundfile / libsndfile: https://github.com/bastibe/python-soundfile
 
 See requirements-tested.txt for the package versions used in this build.
-
-Space Grotesk (Regular and Bold) is bundled under the SIL Open Font License. See Space-Grotesk-OFL.txt. Font source: https://github.com/floriankarsten/space-grotesk

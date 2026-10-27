@@ -67,6 +67,7 @@ class StemExporter:
         current = None
         error = None
         connected = False
+        isolation_started = False
         store = ManifestStore(directory, self.log)
         try:
             store.save(manifest)
@@ -80,6 +81,7 @@ class StemExporter:
                 current["status"] = "recording"
                 self.emit({"type": "status", "number": track.number, "status": "recording"})
                 store.save(manifest)
+                isolation_started = True
                 self.controller.isolate_track(track.number, self.cancel)
                 pause(settings.settle_seconds if settings.mode == "hardware" else 0.05, self.cancel)
                 def progress(ratio, peak):
@@ -108,7 +110,7 @@ class StemExporter:
                 current["status"] = "error"
                 self.emit({"type": "status", "number": current["number"], "status": "error"})
         finally:
-            # STOP is attempted even after device/capture errors. No guessed mute restoration.
+            # Cleanup is independent of cancellation and runs after partial isolation too.
             if connected:
                 try:
                     self.controller.stop()
@@ -116,6 +118,18 @@ class StemExporter:
                     manifest["stop_error"] = str(exc)
                     manifest["status"] = "error"
                     error = error or RuntimeError(f"Could not stop the MPC: {exc}. Press STOP on the MPC.")
+                if isolation_started:
+                    try:
+                        self.controller.clear_mutes()
+                        manifest["mute_cleanup"] = "clear_all_sent"
+                        self.log("MPC: CLEAR sent to unmute all 64 tracks.")
+                    except Exception as exc:
+                        manifest["mute_cleanup"] = "failed"
+                        manifest["mute_cleanup_error"] = str(exc)
+                        manifest["status"] = "error"
+                        message = f"Could not clear MPC mutes: {exc}. Press F2 CLEAR on the MPC Track Mute page."
+                        self.log(message)
+                        error = error or RuntimeError(message)
             try:
                 self.controller.close()
             except Exception as exc:

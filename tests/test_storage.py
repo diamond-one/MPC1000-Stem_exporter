@@ -106,6 +106,7 @@ class Controller:
     def isolate_track(self, n, cancel): self.calls.append(n)
     def play_from_start(self): self.calls.append("play")
     def stop(self): self.calls.append("stop")
+    def clear_mutes(self): self.calls.append("clear_mutes")
     def close(self): self.calls.append("close")
 
 
@@ -145,7 +146,7 @@ def test_entire_export_completes_with_export_json_locked_for_the_whole_job(tmp_p
     recovered = json.loads(Path(finished["manifest_path"]).read_text())
     assert recovered["status"] == "complete"
     assert all(t["status"] == "complete" for t in recovered["tracks"])
-    assert controller.calls[-2:] == ["stop", "close"]
+    assert controller.calls[-3:] == ["stop", "clear_mutes", "close"]
 
 
 def test_completed_wav_not_marked_failed_when_all_metadata_writes_fail(monkeypatch, tmp_path):
@@ -167,7 +168,7 @@ def test_completed_wav_not_marked_failed_when_all_metadata_writes_fail(monkeypat
     statuses = [e["status"] for e in events if e["type"] == "status" and e["number"] == 1]
     assert statuses == ["recording", "complete"]
     assert next(e for e in events if e["type"] == "finished")["complete"] == 1
-    assert controller.calls[-2:] == ["stop", "close"]
+    assert controller.calls[-3:] == ["stop", "clear_mutes", "close"]
 
 
 def test_final_metadata_error_does_not_hide_original_audio_error(monkeypatch, tmp_path):
@@ -187,4 +188,4 @@ def test_final_metadata_error_does_not_hide_original_audio_error(monkeypatch, tm
     with pytest.raises(RuntimeError, match="Audio device disconnected"):
         job.run()
     assert any(e["type"] == "finished" for e in events)
-    assert controller.calls[-2:] == ["stop", "close"]
+    assert controller.calls[-3:] == ["stop", "clear_mutes", "close"]

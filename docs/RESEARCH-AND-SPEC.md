@@ -93,8 +93,9 @@ mute/unmute. It also documents mute groups, stored mute events, and sample
 stop behavior. Groups can affect additional tracks; recorded mute events can
 change the isolation during playback. Use ungrouped tracks and set Use events
 OFF for this workflow. Start outside solo mode. The prototype cannot query or
-restore a previous hardware mute mask. It stops playback and leaves the last
-isolation in place; F2 CLEAR on Track Mute restores all tracks manually.
+restore a previous hardware mute mask. As of 0.3.2, it stops playback and sends
+F2 CLEAR on Track Mute after completion, cancellation or failure if isolation
+was attempted. This unmutes all tracks, including those muted before export.
 [OS3-linked Track Mute page](https://www7a.biglobe.ne.jp/~mpc1000/128xl/t_mute_light_e.htm).
 
 ## One-time setup and per-sequence checks

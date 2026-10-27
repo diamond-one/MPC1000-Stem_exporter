@@ -123,3 +123,16 @@ rendered and visually reviewed, including pad label/status spacing.
 
 These interface changes do not establish sample-exact MPC alignment or replace
 the physical hardware acceptance procedure documented above.
+
+## Version 0.3.2 — clear track mutes after export
+
+25 October 2026. All **122 tests passed**. Controller tests verify MAIN → TRACK
+MUTE → F2 CLEAR (notes 77, 88, 94), including releases and the selected MIDI
+channel. Export tests verify STOP → CLEAR → port close on completion, cancellation,
+audio failure and partial isolation failure. Cancelling before isolation does
+not clear pre-existing mutes. Cleanup failures preserve completed WAVs, mark
+the run as an error, and report the manual F2 CLEAR recovery action.
+
+Cleanup sends the all-track CLEAR command; it cannot restore the previous mute
+mask or confirm receipt on the physical MPC. No live MPC transport was triggered
+during these tests.

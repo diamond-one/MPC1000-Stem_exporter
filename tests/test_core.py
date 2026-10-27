@@ -118,6 +118,14 @@ def test_cancel_before_isolation_sends_no_pad():
     assert not port.messages
 
 
+def test_clear_mutes_enters_track_mute_then_sends_f2_on_selected_channel():
+    port = Port()
+    c = MPCController(Settings(midi_channel=7), port=port, sleeper=lambda _: None)
+    c.clear_mutes()
+    assert [(m.type, m.note, m.channel) for m in port.messages] == [
+        (kind, note, 6) for note in (77, 88, 94) for kind in ('note_on', 'note_off')]
+
+
 class Controller:
     def __init__(self):
         self.calls = []
@@ -126,6 +134,7 @@ class Controller:
     def isolate_track(self, n, cancel): self.calls.append(n)
     def play_from_start(self): self.calls.append("play")
     def stop(self): self.calls.append("stop")
+    def clear_mutes(self): self.calls.append("clear_mutes")
     def close(self): self.calls.append("close")
 
 
@@ -147,7 +156,7 @@ def test_selected_order_stereo_wavs_and_pre_roll(tmp_path):
     result = exporter.run()
     assert result["status"] == "complete"
     assert [n for n in c.calls if isinstance(n, int)] == [2, 36, 64]
-    assert c.calls[-2:] == ["stop", "close"]
+    assert c.calls[-3:] == ["stop", "clear_mutes", "close"]
     assert len(list(exporter.directory.glob("*.wav"))) == 3
     for path in exporter.directory.glob("*.wav"):
         info = sf.info(path)
@@ -171,7 +180,7 @@ def test_cancel_discards_incomplete_keeps_completed(tmp_path):
     result = exporter.run()
     assert result["status"] == "cancelled"
     assert [p.name for p in exporter.directory.glob("*.wav")] == ["Track_2.wav"]
-    assert c.calls[-2:] == ["stop", "close"]
+    assert c.calls[-3:] == ["stop", "clear_mutes", "close"]
     assert not list(exporter.directory.glob(".capture-*"))
     assert [t["status"] for t in result["tracks"]] == ["complete", "cancelled", "not_recorded"]
 
@@ -188,7 +197,7 @@ def test_recording_failure_stops_and_marks_error(tmp_path):
     manifest = json.loads((exporter.directory / "export.json").read_text())
     assert manifest["status"] == "error"
     assert manifest["tracks"][0]["status"] == "error"
-    assert c.calls[-2:] == ["stop", "close"]
+    assert c.calls[-3:] == ["stop", "clear_mutes", "close"]
 
 
 def test_exclusive_wav_writer_never_overwrites(tmp_path):
@@ -197,6 +206,49 @@ def test_exclusive_wav_writer_never_overwrites(tmp_path):
     with pytest.raises(FileExistsError):
         write_exclusive(path, [np.zeros((100, 2))], 48000)
     assert path.read_bytes() == b"previous audio"
+
+
+def test_partial_isolation_failure_still_clears_mutes(tmp_path):
+    p = project_for_export(tmp_path)
+    class BrokenController(Controller):
+        def isolate_track(self, number, cancel):
+            raise RuntimeError('Partial isolation failed')
+    c = BrokenController()
+    job = StemExporter(p, controller=c, recorder=DemoRecorder(p.settings))
+    with pytest.raises(RuntimeError, match='Partial isolation'):
+        job.run()
+    assert c.calls[-3:] == ['stop', 'clear_mutes', 'close']
+
+
+def test_cleanup_failure_keeps_finished_wavs_and_reports_error(tmp_path):
+    p = project_for_export(tmp_path)
+    class BrokenController(Controller):
+        def clear_mutes(self):
+            self.calls.append('clear_mutes')
+            raise RuntimeError('MIDI disconnected')
+    c = BrokenController()
+    job = StemExporter(p, controller=c, recorder=DemoRecorder(p.settings, speed=10000))
+    with pytest.raises(RuntimeError, match='F2 CLEAR'):
+        job.run()
+    manifest = json.loads((job.directory / 'export.json').read_text())
+    assert manifest['status'] == 'error'
+    assert manifest['mute_cleanup'] == 'failed'
+    assert all(t['status'] == 'complete' for t in manifest['tracks'])
+    assert len(list(job.directory.glob('*.wav'))) == 3
+    assert c.calls[-1] == 'close'
+
+
+def test_cancel_before_isolation_does_not_change_mutes(tmp_path):
+    p = project_for_export(tmp_path)
+    c = Controller()
+    job = StemExporter(p, controller=c, recorder=DemoRecorder(p.settings))
+    def connect():
+        c.calls.append('connect')
+        job.cancel.set()
+    c.connect = connect
+    result = job.run()
+    assert result['status'] == 'cancelled'
+    assert c.calls == ['connect', 'stop', 'close']
 
 
 def test_repeated_exports_use_separate_folders(tmp_path):

@@ -243,7 +243,9 @@ class SetupDialog(QDialog):
         reported latency. Every WAV keeps the requested frame count and pre-roll, but musical
         alignment remains approximate. The capture mode is logged and saved in the manifest.</p>
         <p>The meter stops when you change the audio route or close Setup, releasing the input
-        for export. Previous MPC mute states cannot be read or restored.</p>
+        for export. After export, cancellation or an error, the app stops playback and
+        clears all 64 track mutes. This also unmutes previously muted tracks; their
+        original mute states cannot be read or restored.</p>
         <p><a href='https://www7a.biglobe.ne.jp/~mpc1000/mpc-ctl/index.htm'>Official JJ setup & mappings</a></p>""")
         adv.addWidget(guide, 1)
         self.verified = QCheckBox("I checked the MPC setup, routing, and sequence behavior.")

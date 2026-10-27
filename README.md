@@ -32,6 +32,8 @@ Screenshots show an illustrative six-track session in the actual Windows app. Co
 
 ## Current version
 
+Version **0.3.2** clears all MPC track mutes after export, cancellation or errors.
+
 Version **0.3.1** adds a remembered **Theme: Light / Dark** button and a Windows
 app icon for the title bar, taskbar and executable. Switch themes from the top
 bar without changing track selections, editing names or interrupting recording.
@@ -62,7 +64,7 @@ python -m venv .venv
 To create a standalone executable, follow [Build the portable Windows app](#build-the-portable-windows-app).
 Prebuilt Windows downloads are available under [Releases](https://github.com/diamond-one/MPC1000-Stem_exporter/releases). Executables and recordings are not stored in the source tree.
 
-If you have the separately packaged portable Windows build, extract **MPC-Stem-Exporter-0.3.1-Windows.zip** in full
+If you have the separately packaged portable Windows build, extract **MPC-Stem-Exporter-0.3.2-Windows.zip** in full
 and open **MPC Stem Exporter.exe**. Keep `_internal` beside the executable. It
 requires no separate Python installation. This is a locally built, unsigned
 app; no installer, administrator access or background service is used.
@@ -130,8 +132,9 @@ making a production sample-accuracy guarantee.
 **Stop recording** cancels the current pass, attempts MPC STOP, and keeps finished
 files. An error stops the queue. A fresh export never overwrites previous stems.
 If a MIDI cable is disconnected, press STOP on the MPC itself. The app cannot read
-the MPC's previous mute state; it leaves the last isolation in place. F2 CLEAR on
-the Track Mute page unmutes all tracks.
+the MPC's previous mute state. After completion, cancellation or failure, it
+stops playback and sends F2 CLEAR to unmute all 64 tracks, including previously
+muted tracks. If MIDI cleanup fails, Activity reports how to clear mutes manually.
 
 ## Projects and keyboard
 
